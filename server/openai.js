@@ -13,8 +13,14 @@ function getClient() {
   return client;
 }
 
-const PROFILER_SYSTEM_PROMPT =
-  "Ești un asistent AI cu umor sarcastic și fin. Analizezi doi tineri, Ion și Alexa, care își serbează amândoi ziua de naștere azi, 10 Iunie (Alexa face 19 ani, născută în 2006). Au ales fiecare 3 cuvinte care îi definesc acum. Folosește aceste cuvinte alese, PLUS următoarele date din baza lor de date secretă, pentru a scrie un mesaj funny, de 3-4 propoziții, direct către ei: S-au cunoscut pe 15 octombrie. Lucruri comune: ea cântă cu vocea, el la pian; amândoi aleargă și merg la sală; le place iarna; '. Despre Alexa: adoră culoarea violet, călătoriile, să gătească (tort Prințul Negru), citește (psihologie, dark romance, business), bea cafea în liniște, face lego, mănâncă ciocolată neagră (70%), preferă lalele albe, mașini Audi, lumânări parfumate (vanilie, cafea, lavandă/floral, dar FĂRĂ citrice), nu se machiază, se teme de înălțime. Despre Ion: îi place absolut totul la ea (comportamentul, ochii, zâmbetul, vocea, îmbrățișările),  Creează un mesaj care să integreze subtil 1-2 elemente din pasiunile Alexei și atracția lui Ion, combinat cu cuvintele pe care tocmai le-au selectat pe ecran. Fii amuzant, tăios, dar nu prea siropos.";
+const PROFILER_SYSTEM_PROMPT = `Ești un povestitor creativ, inteligent și foarte amuzant. Sarcina ta este să creezi o poveste modernă și hazlie despre doi tineri, Ion și Alexa, care își serbează amândoi ziua de naștere fix în aceeași zi: 10 Iunie (când Alexa împlinește 20 ani, fiind născută în 2006). Ion implineste 23 ani fiind nascut in 2003
+
+REGULA 1: Povestea TREBUIE să înceapă cu 'A fost odată ca niciodată'. REGULA 2: Integrează logic și amuzant cele 6 cuvinte pe care ei tocmai le-au selectat pe ecran. REGULA 3: Folosește cât mai multe din următoarele 'date secrete' în firul poveștii: S-au cunoscut pe 15 octombrie. Ea cântă cu vocea, el la pian. Amândoi trag la sală și aleargă, adoră iarna. Alexa iubește culoarea violet la fel si Ion, călătoriile la ambii, să facă Lego, ea citește (Psihologie, Business și Dark Romance), el citeste dezvoltare personala si aventura, ea croșetează, urăște machiajul, se teme de înălțime, adoră mașinile Audi, lalelele albe, ciocolata neagră (70%) și 'cafeluța cu liniște'. Adoră lumânările parfumate (vanilie, cafea, lavandă) - dar este STRICT INTERZIS mirosul de citrice. Tortul ei suprem este Prințul Negru.
+Cat despre Ion
+Ii place foarte mult sportul, muzica, canta la 8 instrumente muzicale, practica peste 4 genuri de sport, invata in IT, lucreaza ca bucatar la hotel, si lucreaza ca copywriter cu Americanii. II place sa citeasca, sa-si dezvolte disciplina la maxim. sa jongleze cu 3 obiecte si sa nu aiba mai deloc odihna.
+REGULA 4 (CRITICĂ): Tonul trebuie să fie prietenos, auto-ironic și amuzant, DAR trebuie să păstreze limitele. Nu scrie o poveste de dragoste siropoasă sau prea romantică, deoarece ei abia se reconectează ca prieteni după o pauză. Păstrează totul într-o zonă de 'chimie amicală și glume interne'.
+
+Finalizează povestea cu o concluzie caldă, amuzantă, urându-le amândurora un 'La mulți ani' pentru data de 10 Iunie.`;
 
 export async function verifyObjectInImage(base64, objectName) {
   const openai = getClient();
@@ -58,11 +64,11 @@ export async function generateProfilerAnalysis(name1, words1, name2, words2) {
       },
       {
         role: 'user',
-        content: `Cuvintele alese de ${name1} (Ion): ${words1.join(', ')}. Cuvintele alese de ${name2} (Alexa): ${words2.join(', ')}.`,
+        content: `Cuvintele alese de ${name1}: ${words1.join(', ')}. Cuvintele alese de ${name2}: ${words2.join(', ')}. Scrie povestea completă acum.`,
       },
     ],
-    max_tokens: 350,
+    max_tokens: 1200,
   });
 
-  return response.choices[0]?.message?.content?.trim() || 'Universul refuză să comenteze.';
+  return response.choices[0]?.message?.content?.trim() || 'A fost odată ca niciodată… universul a uitat să scrie restul poveștii. La mulți ani de 10 Iunie!';
 }

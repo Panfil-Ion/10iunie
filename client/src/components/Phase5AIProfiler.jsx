@@ -6,43 +6,61 @@ import { INPUT_CLASS, BTN_SUBMIT } from '../styles';
 import { waitingForPeer } from '../utils/names';
 
 const THINKING_MS = 4000;
+const GENERATING_MS = 4000;
 
 export default function Phase5AIProfiler({ slot, state, emit }) {
   const [selected, setSelected] = useState([]);
   const [custom, setCustom] = useState('');
   const [displayText, setDisplayText] = useState('');
   const [typewriterDone, setTypewriterDone] = useState(false);
-  const [thinkingDone, setThinkingDone] = useState(false);
-  const thinkingStartedRef = useRef(false);
+  const [loaderStep, setLoaderStep] = useState('thinking');
+  const [generatingMinDone, setGeneratingMinDone] = useState(false);
+  const sequenceRef = useRef(false);
 
   const submitted = state?.game3?.submitted?.[slot];
   const generating = state?.game3?.generating;
   const bothSubmitted = state?.game3?.submitted?.[1] && state?.game3?.submitted?.[2];
   const badges = state?.phaseData?.badgeWords || [];
+  const aiText = state?.game3?.aiText;
 
   useEffect(() => {
     if (state?.phase !== 'PHASE_5_RESULT') {
-      setThinkingDone(false);
+      sequenceRef.current = false;
+      setLoaderStep('thinking');
+      setGeneratingMinDone(false);
       setDisplayText('');
       setTypewriterDone(false);
-      thinkingStartedRef.current = false;
       return;
     }
 
-    if (thinkingStartedRef.current) return;
-    thinkingStartedRef.current = true;
-    setThinkingDone(false);
+    if (sequenceRef.current) return;
+    sequenceRef.current = true;
+    setLoaderStep('thinking');
+    setGeneratingMinDone(false);
     setDisplayText('');
     setTypewriterDone(false);
 
-    const timer = setTimeout(() => setThinkingDone(true), THINKING_MS);
-    return () => clearTimeout(timer);
-  }, [state?.phase, state?.game3?.aiText]);
+    const timers = [];
+    timers.push(
+      setTimeout(() => {
+        setLoaderStep('generating');
+        timers.push(setTimeout(() => setGeneratingMinDone(true), GENERATING_MS));
+      }, THINKING_MS)
+    );
+
+    return () => timers.forEach(clearTimeout);
+  }, [state?.phase]);
 
   useEffect(() => {
-    if (state?.phase !== 'PHASE_5_RESULT' || !thinkingDone || !state?.game3?.aiText) return;
+    if (state?.phase !== 'PHASE_5_RESULT') return;
+    if (loaderStep !== 'generating' || !generatingMinDone || !aiText) return;
+    setLoaderStep('story');
+  }, [state?.phase, loaderStep, generatingMinDone, aiText]);
 
-    const full = state.game3.aiText;
+  useEffect(() => {
+    if (state?.phase !== 'PHASE_5_RESULT' || loaderStep !== 'story' || !aiText) return;
+
+    const full = aiText;
     let i = 0;
     setDisplayText('');
     setTypewriterDone(false);
@@ -54,23 +72,29 @@ export default function Phase5AIProfiler({ slot, state, emit }) {
         clearInterval(interval);
         setTypewriterDone(true);
       }
-    }, 22);
+    }, 18);
 
     return () => clearInterval(interval);
-  }, [state?.phase, state?.game3?.aiText, thinkingDone]);
+  }, [state?.phase, loaderStep, aiText]);
 
   if (state?.phase === 'PHASE_5_RESULT') {
-    if (!thinkingDone) {
-      return <ThinkingBlink />;
+    if (loaderStep === 'thinking') {
+      return <ThinkingBlink label="thinking" />;
+    }
+
+    if (loaderStep === 'generating') {
+      return <ThinkingBlink label="generare poveste" />;
     }
 
     return (
-      <motion.div className="h-full w-full flex flex-col items-center justify-center px-6 py-16 overflow-y-auto">
-        <div className="max-w-2xl text-center flex-1 flex flex-col justify-center">
-          <p className="font-serif text-xl md:text-2xl text-zinc-100 leading-relaxed min-h-[120px]">
-            {displayText}
-            {!typewriterDone && <span className="animate-pulse">|</span>}
-          </p>
+      <motion.div className="h-full w-full flex flex-col items-center justify-center px-4 py-10 overflow-hidden">
+        <div className="w-full max-w-2xl flex-1 flex flex-col justify-center min-h-0">
+          <div className="max-h-96 overflow-y-auto p-4 text-left">
+            <p className="font-serif text-xl md:text-2xl text-zinc-100 leading-relaxed">
+              {displayText}
+              {!typewriterDone && <span className="animate-pulse">|</span>}
+            </p>
+          </div>
         </div>
 
         {typewriterDone && (
@@ -81,7 +105,7 @@ export default function Phase5AIProfiler({ slot, state, emit }) {
   }
 
   if (generating || (bothSubmitted && submitted)) {
-    return <ThinkingBlink />;
+    return <ThinkingBlink label="thinking" />;
   }
 
   const toggleWord = (word) => {
