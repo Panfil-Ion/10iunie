@@ -1,18 +1,23 @@
-# Build frontend
-FROM node:20-alpine AS client-build
+# Debian slim — Vite/Rollup NU funcționează corect pe Alpine musl
+FROM node:20-bookworm-slim AS client-build
+
 WORKDIR /app/client
+
+# Dependențe de build (Vite e acum în dependencies, nu devDependencies)
 COPY client/package.json ./
-RUN npm install --include=dev
+RUN npm install --no-audit --no-fund
+
 COPY client/ ./
 RUN npm run build
 
-# Production image
-FROM node:20-alpine
+# Imagine finală
+FROM node:20-bookworm-slim
+
 WORKDIR /app
 ENV NODE_ENV=production
 
 COPY server/package.json ./server/
-RUN cd server && npm install --omit=dev
+RUN cd server && npm install --omit=dev --no-audit --no-fund
 
 COPY server/ ./server/
 COPY --from=client-build /app/client/dist ./client/dist

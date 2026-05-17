@@ -309,6 +309,6 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`10 June Sync Protocol running on port ${PORT}`);
 });

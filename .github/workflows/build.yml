@@ -1,0 +1,22 @@
+name: Build check
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install & build client
+        working-directory: client
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Verify dist exists
+        run: test -f client/dist/index.html
