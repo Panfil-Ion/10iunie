@@ -83,11 +83,11 @@ export default function Phase5AIProfiler({ slot, state, emit }) {
       animate={{ opacity: 1 }}
       className="h-full w-full flex flex-col overflow-hidden"
     >
-      <div className="flex-1 overflow-y-auto px-4 py-16">
+      <motion.div className="flex-1 overflow-y-auto px-4 py-16">
         <p className="text-xl md:text-2xl text-zinc-300 text-center mb-10">
           Alege 3 cuvinte care te definesc
         </p>
-        <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
+        <motion.div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
           {badges.map((word) => (
             <button
               key={word}
@@ -104,9 +104,9 @@ export default function Phase5AIProfiler({ slot, state, emit }) {
             </button>
           ))}
         </motion.div>
-      </div>
+      </motion.div>
 
-      <div className="shrink-0 px-4 pb-10 pt-6 border-t border-zinc-800">
+      <motion.div className="shrink-0 px-4 pb-10 pt-6 border-t border-zinc-800">
         <p className="text-lg text-zinc-500 text-center mb-4">
           Nu te regăsești? Adaugă propriul cuvânt
         </p>
@@ -130,7 +130,7 @@ export default function Phase5AIProfiler({ slot, state, emit }) {
             Submit ({selected.length}/3)
           </button>
         )}
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
