@@ -9,13 +9,18 @@ import {
   assignPlayer,
   bothPlayersConnected,
   bothSubmitted,
-  pickRandomObject,
   getBadgeWords,
   calcGame1Winner,
-  calcGame2Winner,
+  calcRoundWinner,
+  calcGame2OverallWinner,
   serializeRoom,
+  resetAck,
+  createGame1State,
+  createGame3State,
+  initGame2,
+  resetGame2Round,
+  getName,
   PHASES,
-  TIMING,
 } from './gameState.js';
 import { verifyObjectInImage, generateProfilerAnalysis } from './openai.js';
 
@@ -31,22 +36,12 @@ app.use(cors());
 
 const httpServer = createServer(app);
 
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : null,
-  'http://localhost:5173',
-  'http://localhost:3001',
-].filter(Boolean);
-
 const io = new Server(httpServer, {
   cors: {
     origin: (origin, callback) => {
       if (!isProd || !origin) return callback(null, true);
       const ok =
-        allowedOrigins.some((o) => origin === o || origin.endsWith('.up.railway.app')) ||
-        origin.includes('railway.app');
+        origin.endsWith('.up.railway.app') || origin.includes('railway.app') || origin.includes('localhost');
       callback(null, ok);
     },
     methods: ['GET', 'POST'],
@@ -58,9 +53,7 @@ const io = new Server(httpServer, {
 const rooms = new Map();
 
 function getOrCreateRoom(roomId) {
-  if (!rooms.has(roomId)) {
-    rooms.set(roomId, createRoom(roomId));
-  }
+  if (!rooms.has(roomId)) rooms.set(roomId, createRoom(roomId));
   return rooms.get(roomId);
 }
 
@@ -68,27 +61,104 @@ function broadcastState(room) {
   io.to(room.id).emit('state', serializeRoom(room));
 }
 
-function advancePhase(room, newPhase, extra = {}) {
+function advancePhase(room, newPhase) {
+  resetAck(room);
   room.phase = newPhase;
-  room.phaseData = { ...room.phaseData, ...extra };
   broadcastState(room);
 }
 
-function schedulePhase(room, delayMs, callback) {
+function setRevengeAlert(room, slot) {
+  room.phaseData.revengeAlert = { from: slot, name: getName(room, slot) };
+  broadcastState(room);
   setTimeout(() => {
-    if (rooms.has(room.id) && room.phase) callback();
-  }, delayMs);
+    if (rooms.has(room.id)) {
+      room.phaseData.revengeAlert = null;
+      broadcastState(room);
+    }
+  }, 3000);
 }
 
-function startPhase4Game(room) {
-  room.game2.object = pickRandomObject();
-  room.game2.startTime = Date.now();
-  room.game2.submitted = { 1: false, 2: false };
-  room.game2.uploadTimes = { 1: null, 2: null };
-  room.game2.visionResults = { 1: null, 2: null };
-  room.game2.winner = null;
-  room.game2.processing = false;
+function advanceFromAck(room) {
+  switch (room.phase) {
+    case PHASES.PHASE_1_SYNC:
+      advancePhase(room, PHASES.PHASE_1_UNLOCK);
+      break;
+    case PHASES.PHASE_1_UNLOCK:
+      advancePhase(room, PHASES.PHASE_2);
+      break;
+    case PHASES.PHASE_2_TRANSITION:
+      advancePhase(room, PHASES.PHASE_3_RULES);
+      break;
+    case PHASES.PHASE_3_RULES:
+      advancePhase(room, PHASES.PHASE_3);
+      break;
+    case PHASES.PHASE_4_RULES:
+      initGame2(room);
+      advancePhase(room, PHASES.PHASE_4);
+      break;
+    default:
+      break;
+  }
+}
+
+function finishGame2Round(room) {
+  const roundWinner = calcRoundWinner(room);
+  if (roundWinner) room.game2.roundWins[roundWinner]++;
+
+  room.game2.rounds.push({
+    round: room.game2.currentRound,
+    object: room.game2.object,
+    winner: roundWinner,
+    visionResults: { ...room.game2.visionResults },
+    uploadTimes: { ...room.game2.uploadTimes },
+  });
+
+  if (room.game2.currentRound < 3) {
+    room.game2.nextRoundReady = { 1: false, 2: false };
+    advancePhase(room, PHASES.PHASE_4_ROUND_RESULT);
+    return;
+  }
+
+  const gameWinner = calcGame2OverallWinner(room);
+  room.game2.gameWinner = gameWinner;
+  if (gameWinner) room.scores[gameWinner]++;
+  room.game2.loopNext = { 1: false, 2: false };
+  advancePhase(room, PHASES.PHASE_4_GAME_RESULT);
+}
+
+function retryGame1(room, slot) {
+  room.game1 = createGame1State();
+  setRevengeAlert(room, slot);
+  advancePhase(room, PHASES.PHASE_3);
+}
+
+function retryGame2(room, slot) {
+  initGame2(room);
+  setRevengeAlert(room, slot);
   advancePhase(room, PHASES.PHASE_4);
+}
+
+function retryGame3(room, slot) {
+  room.game3 = createGame3State();
+  setRevengeAlert(room, slot);
+  advancePhase(room, PHASES.PHASE_5);
+}
+
+function tryAdvanceFromNext(room, gameNum) {
+  const gameKey = `game${gameNum}`;
+  const g = room[gameKey];
+  if (!bothSubmitted(g.loopNext)) return;
+
+  g.loopNext = { 1: false, 2: false };
+
+  if (gameNum === 1) {
+    advancePhase(room, PHASES.PHASE_4_RULES);
+  } else if (gameNum === 2) {
+    room.phaseData.badgeWords = getBadgeWords(20);
+    advancePhase(room, PHASES.PHASE_5);
+  } else if (gameNum === 3) {
+    advancePhase(room, PHASES.PHASE_6);
+  }
 }
 
 io.on('connection', (socket) => {
@@ -131,12 +201,6 @@ io.on('connection', (socket) => {
 
     if (bothSubmitted(currentRoom.nameSubmitted) && currentRoom.phase === PHASES.PHASE_1) {
       advancePhase(currentRoom, PHASES.PHASE_1_SYNC);
-      schedulePhase(currentRoom, TIMING.SHORT, () => {
-        advancePhase(currentRoom, PHASES.PHASE_1_UNLOCK);
-        schedulePhase(currentRoom, TIMING.MEDIUM, () => {
-          advancePhase(currentRoom, PHASES.PHASE_2);
-        });
-      });
     }
   });
 
@@ -153,12 +217,15 @@ io.on('connection', (socket) => {
 
     if (bothSubmitted(currentRoom.dateSubmitted) && currentRoom.phase === PHASES.PHASE_2) {
       advancePhase(currentRoom, PHASES.PHASE_2_TRANSITION);
-      schedulePhase(currentRoom, TIMING.MEDIUM, () => {
-        advancePhase(currentRoom, PHASES.PHASE_3_RULES);
-        schedulePhase(currentRoom, TIMING.SHORT, () => {
-          advancePhase(currentRoom, PHASES.PHASE_3);
-        });
-      });
+    }
+  });
+
+  socket.on('screen-ack', () => {
+    if (!currentRoom || !playerSlot) return;
+    currentRoom.phaseData.ackReady[playerSlot] = true;
+    broadcastState(currentRoom);
+    if (bothSubmitted(currentRoom.phaseData.ackReady)) {
+      advanceFromAck(currentRoom);
     }
   });
 
@@ -180,40 +247,56 @@ io.on('connection', (socket) => {
       const winner = calcGame1Winner(currentRoom);
       currentRoom.game1.winner = winner;
       if (winner) currentRoom.scores[winner]++;
-      currentRoom.game1.continueReady = { 1: false, 2: false };
+      currentRoom.game1.loopNext = { 1: false, 2: false };
       advancePhase(currentRoom, PHASES.PHASE_3_RESULT);
     }
   });
 
-  socket.on('phase-continue', () => {
+  socket.on('game-loop-action', ({ game, action }) => {
     if (!currentRoom || !playerSlot) return;
+    const g = Number(game);
 
-    if (currentRoom.phase === PHASES.PHASE_3_RESULT) {
-      currentRoom.game1.continueReady[playerSlot] = true;
-      broadcastState(currentRoom);
-      if (!bothSubmitted(currentRoom.game1.continueReady)) return;
-
-      advancePhase(currentRoom, PHASES.PHASE_4_RULES);
-      schedulePhase(currentRoom, TIMING.MEDIUM, () => {
-        startPhase4Game(currentRoom);
-      });
+    if (action === 'retry') {
+      if (g === 1) retryGame1(currentRoom, playerSlot);
+      else if (g === 2) retryGame2(currentRoom, playerSlot);
+      else if (g === 3) retryGame3(currentRoom, playerSlot);
       return;
     }
 
-    if (currentRoom.phase === PHASES.PHASE_5_RESULT) {
-      currentRoom.game3.continueReady[playerSlot] = true;
-      broadcastState(currentRoom);
-      if (!bothSubmitted(currentRoom.game3.continueReady)) return;
-      advancePhase(currentRoom, PHASES.PHASE_6);
+    if (action === 'next') {
+      if (g === 1 && currentRoom.phase === PHASES.PHASE_3_RESULT) {
+        currentRoom.game1.loopNext[playerSlot] = true;
+        broadcastState(currentRoom);
+        tryAdvanceFromNext(currentRoom, 1);
+      } else if (g === 2 && currentRoom.phase === PHASES.PHASE_4_GAME_RESULT) {
+        currentRoom.game2.loopNext[playerSlot] = true;
+        broadcastState(currentRoom);
+        tryAdvanceFromNext(currentRoom, 2);
+      } else if (g === 3 && currentRoom.phase === PHASES.PHASE_5_RESULT) {
+        currentRoom.game3.loopNext[playerSlot] = true;
+        broadcastState(currentRoom);
+        tryAdvanceFromNext(currentRoom, 3);
+      }
     }
+  });
+
+  socket.on('game2-next-round', () => {
+    if (!currentRoom || !playerSlot || currentRoom.phase !== PHASES.PHASE_4_ROUND_RESULT) return;
+    currentRoom.game2.nextRoundReady[playerSlot] = true;
+    broadcastState(currentRoom);
+
+    if (!bothSubmitted(currentRoom.game2.nextRoundReady)) return;
+
+    currentRoom.game2.currentRound++;
+    resetGame2Round(currentRoom);
+    advancePhase(currentRoom, PHASES.PHASE_4);
   });
 
   socket.on('game2-photo', async ({ base64 }) => {
     if (!currentRoom || !playerSlot || currentRoom.phase !== PHASES.PHASE_4) return;
     if (currentRoom.game2.submitted[playerSlot]) return;
 
-    const elapsed = Date.now() - currentRoom.game2.startTime;
-    currentRoom.game2.uploadTimes[playerSlot] = elapsed;
+    currentRoom.game2.uploadTimes[playerSlot] = Date.now() - currentRoom.game2.startTime;
     currentRoom.game2.submitted[playerSlot] = true;
     currentRoom.game2.processing = true;
     broadcastState(currentRoom);
@@ -226,28 +309,18 @@ io.on('connection', (socket) => {
       currentRoom.game2.visionResults[playerSlot] = 'NU';
     }
 
-    const waitingOnVision =
+    const waiting =
       currentRoom.game2.submitted[1] &&
       currentRoom.game2.submitted[2] &&
       (!currentRoom.game2.visionResults[1] || !currentRoom.game2.visionResults[2]);
-    currentRoom.game2.processing = waitingOnVision;
+    currentRoom.game2.processing = waiting;
     broadcastState(currentRoom);
 
     if (bothSubmitted(currentRoom.game2.submitted)) {
       const bothDone = currentRoom.game2.visionResults[1] && currentRoom.game2.visionResults[2];
       if (bothDone) {
         currentRoom.game2.processing = false;
-        const winner = calcGame2Winner(currentRoom);
-        currentRoom.game2.winner = winner;
-        if (winner) currentRoom.scores[winner]++;
-        advancePhase(currentRoom, PHASES.PHASE_4_RESULT);
-        schedulePhase(currentRoom, TIMING.MEDIUM, () => {
-          currentRoom.phaseData.badgeWords = getBadgeWords(20);
-          currentRoom.game3.submitted = { 1: false, 2: false };
-          currentRoom.game3.continueReady = { 1: false, 2: false };
-          currentRoom.game3.aiText = '';
-          advancePhase(currentRoom, PHASES.PHASE_5);
-        });
+        finishGame2Round(currentRoom);
       }
     }
   });
@@ -272,21 +345,19 @@ io.on('connection', (socket) => {
     const allWords2 = [...room.game3.words[2], room.game3.customWord[2]].filter(Boolean);
 
     try {
-      const text = await generateProfilerAnalysis(
-        room.names[1]?.trim() || 'Cineva',
+      room.game3.aiText = await generateProfilerAnalysis(
+        getName(room, 1),
         allWords1,
-        room.names[2]?.trim() || 'Cineva',
+        getName(room, 2),
         allWords2,
       );
-      room.game3.aiText = text;
     } catch (err) {
       console.error('OpenAI text error:', err.message);
-      room.game3.aiText =
-        'AI-ul a făcut o pauză de cafea. Dar voi doi sunteți clar o combinație interesantă.';
+      room.game3.aiText = 'AI-ul a făcut o pauză de cafea. Dar voi doi sunteți clar o combinație interesantă.';
     }
 
     room.game3.generating = false;
-    room.game3.continueReady = { 1: false, 2: false };
+    room.game3.loopNext = { 1: false, 2: false };
     advancePhase(room, PHASES.PHASE_5_RESULT);
   }
 

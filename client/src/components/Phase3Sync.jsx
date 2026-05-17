@@ -1,42 +1,28 @@
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import SplitScreen from './SplitScreen';
-import ContinueButton from './ContinueButton';
+import GameLoopButtons from './GameLoopButtons';
 import LoadingSpinner from './LoadingSpinner';
 import { BTN_HOLD } from '../styles';
-import { getName, otherSlot, waitingMessage } from '../utils/names';
+import { getName, otherSlot, waitingForPeer } from '../utils/names';
 
 export default function Phase3Sync({ slot, state, emit }) {
   const pressing = useRef(false);
-
   const n1 = getName(state, 1);
   const n2 = getName(state, 2);
 
   if (state?.phase === 'PHASE_3_RESULT') {
     const winner = state.game1.winner;
     const winnerName = winner ? getName(state, winner) : null;
-
     let resultLine = `${n1} a ținut ${state.game1.durations[1]}s, ${n2} a ținut ${state.game1.durations[2]}s.`;
-    if (winnerName) {
-      resultLine += ` Punct pentru ${winnerName}.`;
-    } else {
-      resultLine += ' Egalitate.';
-    }
+    if (winnerName) resultLine += ` Punct pentru ${winnerName}.`;
+    else resultLine += ' Egalitate.';
 
     return (
       <SplitScreen slot={slot} unified>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center text-center px-6 max-w-xl"
-        >
-          <p className="text-xl md:text-2xl text-zinc-200 leading-relaxed mb-2">{resultLine}</p>
-          <ContinueButton
-            state={state}
-            slot={slot}
-            ready={state.game1.continueReady}
-            onContinue={() => emit('phase-continue')}
-          />
+        <motion.div className="flex flex-col items-center text-center px-6 max-w-xl">
+          <p className="text-xl md:text-2xl text-zinc-100 leading-relaxed mb-4">{resultLine}</p>
+          <GameLoopButtons state={state} slot={slot} emit={emit} game={1} />
         </motion.div>
       </SplitScreen>
     );
@@ -61,18 +47,10 @@ export default function Phase3Sync({ slot, state, emit }) {
 
   return (
     <SplitScreen slot={slot}>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center gap-8 text-center px-4"
-      >
+      <motion.div className="flex flex-col items-center gap-8 text-center px-4">
         {submitted ? (
           <LoadingSpinner
-            text={
-              otherSubmitted
-                ? 'Se calculează rezultatele...'
-                : waitingMessage(state, slot)
-            }
+            text={otherSubmitted ? 'Se calculează rezultatele...' : waitingForPeer(state, slot)}
           />
         ) : (
           <motion.button

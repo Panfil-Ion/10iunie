@@ -7,22 +7,32 @@ import Phase3Sync from './components/Phase3Sync';
 import Phase4PixelHunt from './components/Phase4PixelHunt';
 import Phase5AIProfiler from './components/Phase5AIProfiler';
 import Phase6Outro from './components/Phase6Outro';
-import FullScreenText from './components/FullScreenText';
+import ScreenAck from './components/ScreenAck';
+import RevengeToast from './components/RevengeToast';
 import LoadingSpinner from './components/LoadingSpinner';
 
-const TRANSITION_PHASES = {
-  PHASE_1_SYNC: 'Sincronizare protocoale... Acces permis.',
-  PHASE_1_UNLOCK:
-    'Sistem deblocat. Șansele ca doi oameni să aibă exact aceeași zi de naștere sunt de 0.27%. Universul a luat o decizie intenționată.',
-  PHASE_2_TRANSITION:
-    'În continuare vor urma niște jocuri de calibrare pentru a testa compatibilitatea sistemelor.',
-  PHASE_3_RULES:
-    'Jocul 1: Testul Timpului. Ține apăsat pe buton exact 10.00 secunde în mintea ta. Când crezi că au trecut 10 secunde, ia degetul.',
-  PHASE_4_RULES:
-    'Jocul 2: Vânătoarea de Pixeli. Sistemul va cere un obiect random. Cine deschide camera și face poza cel mai repede, câștigă.',
+const ACK_SCREENS = {
+  PHASE_1_SYNC: {
+    text: 'Sincronizare protocoale... Acces permis.',
+    long: false,
+  },
+  PHASE_1_UNLOCK: {
+    text: 'Sistem deblocat. Șansele ca doi oameni să aibă exact aceeași zi de naștere sunt de 0.27%. Universul a luat o decizie intenționată.',
+    long: true,
+  },
+  PHASE_2_TRANSITION: {
+    text: 'În continuare vor urma niște jocuri de calibrare pentru a testa compatibilitatea sistemelor.',
+    long: true,
+  },
+  PHASE_3_RULES: {
+    text: 'Jocul 1: Testul Timpului. Ține apăsat pe buton exact 10.00 secunde în mintea ta. Când crezi că au trecut 10 secunde, ia degetul.',
+    long: true,
+  },
+  PHASE_4_RULES: {
+    text: 'Jocul 2: Vânătoarea de Pixeli — Best of 3. Sistemul va cere 3 obiecte random. Cine face poza validată cel mai repede câștigă runda. Camera live, fără galerie.',
+    long: true,
+  },
 };
-
-const LONG_TEXT_PHASES = ['PHASE_1_UNLOCK', 'PHASE_2_TRANSITION', 'PHASE_4_RULES'];
 
 function WaitingScreen({ connected, error }) {
   return (
@@ -49,25 +59,21 @@ export default function App() {
   const { connected, slot, state, peerTyping, error, emit } = useSocket();
   const phase = state?.phase;
   const waiting = !state || phase === 'WAITING' || !slot;
-  const transitionText = TRANSITION_PHASES[phase];
+  const ackScreen = ACK_SCREENS[phase];
 
   return (
-    <div className="h-full w-full relative bg-zinc-950">
+    <motion.div className="h-full w-full relative bg-zinc-950">
+      <RevengeToast state={state} />
       <Scoreboard state={state} />
 
       <AnimatePresence mode="wait">
         {waiting ? (
           <WaitingScreen key="wait" connected={connected} error={error} />
-        ) : transitionText ? (
-          <motion.div
-            key={phase}
-            className="h-full"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.5, ease: 'easeInOut' }}
-          >
-            <FullScreenText long={LONG_TEXT_PHASES.includes(phase)}>{transitionText}</FullScreenText>
+        ) : ackScreen ? (
+          <motion.div key={phase} className="h-full">
+            <ScreenAck state={state} slot={slot} emit={emit} long={ackScreen.long}>
+              {ackScreen.text}
+            </ScreenAck>
           </motion.div>
         ) : (
           <motion.div
@@ -75,7 +81,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.5, ease: 'easeInOut' }}
+            transition={{ duration: 0.5 }}
             className="h-full"
           >
             {phase === 'PHASE_1' && (
@@ -87,7 +93,9 @@ export default function App() {
             {(phase === 'PHASE_3' || phase === 'PHASE_3_RESULT') && (
               <Phase3Sync slot={slot} state={state} emit={emit} />
             )}
-            {(phase === 'PHASE_4' || phase === 'PHASE_4_RESULT') && (
+            {(phase === 'PHASE_4' ||
+              phase === 'PHASE_4_ROUND_RESULT' ||
+              phase === 'PHASE_4_GAME_RESULT') && (
               <Phase4PixelHunt slot={slot} state={state} emit={emit} />
             )}
             {(phase === 'PHASE_5' || phase === 'PHASE_5_RESULT') && (
@@ -97,6 +105,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

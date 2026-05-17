@@ -1,86 +1,97 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import SplitScreen from './SplitScreen';
+import LiveCamera from './LiveCamera';
 import LoadingSpinner from './LoadingSpinner';
-import { BTN_SUBMIT } from '../styles';
-import { getName, waitingMessage } from '../utils/names';
+import GameLoopButtons from './GameLoopButtons';
+import { BTN_ACK } from '../styles';
+import { getName, waitingForPeer } from '../utils/names';
 
 export default function Phase4PixelHunt({ slot, state, emit }) {
-  const [uploading, setUploading] = useState(false);
-
+  const [captured, setCaptured] = useState(false);
   const n1 = getName(state, 1);
   const n2 = getName(state, 2);
+  const g2 = state?.game2;
 
-  if (state?.phase === 'PHASE_4_RESULT') {
-    const winner = state.game2.winner;
+  useEffect(() => {
+    setCaptured(false);
+  }, [g2?.currentRound, state?.phase]);
+
+  if (state?.phase === 'PHASE_4_GAME_RESULT') {
+    const w1 = g2.roundWins[1];
+    const w2 = g2.roundWins[2];
+    const winner = g2.gameWinner;
     const winnerName = winner ? getName(state, winner) : null;
-    const t1 = (state.game2.uploadTimes[1] / 1000).toFixed(2);
-    const t2 = (state.game2.uploadTimes[2] / 1000).toFixed(2);
 
-    let line = `${n1}: ${state.game2.visionResults[1]} (${t1}s) — ${n2}: ${state.game2.visionResults[2]} (${t2}s).`;
-    if (winnerName) line += ` Punct pentru ${winnerName}.`;
+    let summary = `${n1} a câștigat ${w1} runde, ${n2} a câștigat ${w2} runde.`;
+    if (winnerName) summary += ` Punct adjudecat de ${winnerName}.`;
+    else summary += ' Egalitate la Jocul 2.';
 
     return (
       <SplitScreen slot={slot} unified>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-xl md:text-2xl text-zinc-200 text-center px-6 leading-relaxed"
-        >
-          {line}
-        </motion.p>
+        <motion.div className="flex flex-col items-center text-center px-6 max-w-xl">
+          <p className="text-xl md:text-2xl text-zinc-100 leading-relaxed mb-4">{summary}</p>
+          <GameLoopButtons state={state} slot={slot} emit={emit} game={2} />
+        </motion.div>
       </SplitScreen>
     );
   }
 
-  const object = state?.game2?.object;
-  const submitted = state?.game2?.submitted?.[slot];
-  const processing = state?.game2?.processing;
+  if (state?.phase === 'PHASE_4_ROUND_RESULT') {
+    const lastRound = g2.rounds[g2.rounds.length - 1];
+    const roundNum = lastRound?.round || g2.currentRound;
+    const rw = lastRound?.winner;
+    const rwName = rw ? getName(state, rw) : null;
+    const t1 = lastRound ? (lastRound.uploadTimes[1] / 1000).toFixed(2) : '—';
+    const t2 = lastRound ? (lastRound.uploadTimes[2] / 1000).toFixed(2) : '—';
 
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file || submitted) return;
+    let line = `Runda ${roundNum}: ${n1} ${lastRound?.visionResults[1]} (${t1}s), ${n2} ${lastRound?.visionResults[2]} (${t2}s).`;
+    if (rwName) line += ` Câștigător rundă: ${rwName}.`;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setUploading(true);
-      emit('game2-photo', { base64: reader.result });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    const acked = g2.nextRoundReady?.[slot];
+    const otherAcked = g2.nextRoundReady?.[slot === 1 ? 2 : 1];
+
+    return (
+      <SplitScreen slot={slot} unified>
+        <motion.div className="flex flex-col items-center text-center px-6 max-w-xl gap-6">
+          <p className="text-xl md:text-2xl text-zinc-100 leading-relaxed">{line}</p>
+          <button
+            type="button"
+            onClick={() => emit('game2-next-round')}
+            disabled={acked}
+            className={BTN_ACK}
+          >
+            [ Următorul Obiect ]
+          </button>
+          {acked && !otherAcked && (
+            <p className="text-lg text-zinc-400">{waitingForPeer(state, slot)}</p>
+          )}
+        </motion.div>
+      </SplitScreen>
+    );
+  }
+
+  const submitted = g2?.submitted?.[slot];
+  const processing = g2?.processing;
+
+  const handleCapture = (base64) => {
+    if (submitted || captured) return;
+    setCaptured(true);
+    emit('game2-photo', { base64 });
   };
 
   return (
     <SplitScreen slot={slot}>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center gap-8 text-center px-4 max-w-lg"
-      >
-        <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed">
-          Fotografiază: <span className="text-white font-medium">{object}</span>
+      <motion.div className="flex flex-col items-center gap-4 px-2 w-full">
+        <p className="text-lg text-zinc-400">
+          Runda {g2?.currentRound} / 3
         </p>
-
-        {submitted || uploading ? (
+        {submitted || captured ? (
           <LoadingSpinner
-            text={
-              processing
-                ? 'AI validează imaginile...'
-                : waitingMessage(state, slot)
-            }
+            text={processing ? 'AI validează imaginile...' : waitingForPeer(state, slot)}
           />
         ) : (
-          <label className={`${BTN_SUBMIT} cursor-pointer relative inline-flex items-center justify-center min-w-[220px]`}>
-            <span className="pointer-events-none">Deschide Camera</span>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFile}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              aria-label="Deschide camera"
-            />
-          </label>
+          <LiveCamera object={g2?.object} onCapture={handleCapture} disabled={submitted} />
         )}
       </motion.div>
     </SplitScreen>

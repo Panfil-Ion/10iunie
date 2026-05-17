@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { PEER_TYPING_CLASS } from '../styles';
 
 export default function SplitScreen({
   slot,
@@ -22,25 +23,23 @@ export default function SplitScreen({
   }
 
   const peerPanel = (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
-      <motion.div className="opacity-50 pointer-events-none text-center w-full max-w-md">
+    <motion.div className="flex-1 flex flex-col items-center justify-center px-4 min-h-0">
+      <motion.div className="pointer-events-none text-center w-full max-w-lg px-2">
         {peerName !== undefined && (
-          <p className="text-2xl text-zinc-400 font-light min-h-[36px]">{peerName || '...'}</p>
+          <p className={PEER_TYPING_CLASS}>{peerName || '...'}</p>
         )}
         {peerDate !== undefined && (
-          <p className="text-2xl text-zinc-400 font-light tracking-widest min-h-[36px]">
-            {peerDate || '...'}
-          </p>
+          <p className={`${PEER_TYPING_CLASS} tracking-widest`}>{peerDate || '...'}</p>
         )}
         {peerContent}
       </motion.div>
-    </div>
+    </motion.div>
   );
 
   const ownPanel = (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
+    <motion.div className="flex-1 flex flex-col items-center justify-center px-4 min-h-0">
       {children}
-    </div>
+    </motion.div>
   );
 
   return (
@@ -48,13 +47,13 @@ export default function SplitScreen({
       {slot === 2 ? (
         <>
           {ownPanel}
-          <div className="border-t border-zinc-800 shrink-0" />
+          <motion.div className="border-t border-zinc-700 shrink-0" />
           {peerPanel}
         </>
       ) : (
         <>
           {peerPanel}
-          <div className="border-t border-zinc-800 shrink-0" />
+          <motion.div className="border-t border-zinc-700 shrink-0" />
           {ownPanel}
         </>
       )}

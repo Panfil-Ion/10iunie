@@ -1,16 +1,19 @@
 import { motion } from 'framer-motion';
 import { getName } from '../utils/names';
 
+const SCORE_PHASES = [
+  'PHASE_3',
+  'PHASE_3_RESULT',
+  'PHASE_4',
+  'PHASE_4_ROUND_RESULT',
+  'PHASE_4_GAME_RESULT',
+  'PHASE_5',
+  'PHASE_5_RESULT',
+  'PHASE_6',
+];
+
 export default function Scoreboard({ state }) {
-  if (!state) return null;
-  const show = [
-    'PHASE_4',
-    'PHASE_4_RESULT',
-    'PHASE_5',
-    'PHASE_5_RESULT',
-    'PHASE_6',
-  ].includes(state.phase);
-  if (!show) return null;
+  if (!state || !SCORE_PHASES.includes(state.phase)) return null;
 
   const n1 = getName(state, 1);
   const n2 = getName(state, 2);

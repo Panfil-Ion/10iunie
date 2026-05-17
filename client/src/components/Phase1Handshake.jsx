@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import SplitScreen from './SplitScreen';
 import LoadingSpinner from './LoadingSpinner';
 import { INPUT_CLASS, BTN_SUBMIT } from '../styles';
-import { waitingMessage } from '../utils/names';
+import { waitingForPeer } from '../utils/names';
 
 export default function Phase1Handshake({ slot, state, peerTyping, emit }) {
   const [name, setName] = useState(state?.names?.[slot] || '');
@@ -23,7 +23,7 @@ export default function Phase1Handshake({ slot, state, peerTyping, emit }) {
   return (
     <SplitScreen slot={slot} peerName={peerName}>
       {submitted ? (
-        <LoadingSpinner text={waitingMessage(state, slot)} />
+        <LoadingSpinner text={waitingForPeer(state, slot)} />
       ) : (
         <motion.div
           initial={{ opacity: 0 }}

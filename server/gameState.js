@@ -10,16 +10,11 @@ export const PHASES = {
   PHASE_3_RESULT: 'PHASE_3_RESULT',
   PHASE_4_RULES: 'PHASE_4_RULES',
   PHASE_4: 'PHASE_4',
-  PHASE_4_RESULT: 'PHASE_4_RESULT',
+  PHASE_4_ROUND_RESULT: 'PHASE_4_ROUND_RESULT',
+  PHASE_4_GAME_RESULT: 'PHASE_4_GAME_RESULT',
   PHASE_5: 'PHASE_5',
   PHASE_5_RESULT: 'PHASE_5_RESULT',
   PHASE_6: 'PHASE_6',
-};
-
-export const TIMING = {
-  SHORT: 6000,
-  MEDIUM: 8000,
-  LONG: 10000,
 };
 
 const OBJECTS = [
@@ -46,32 +41,57 @@ export function createRoom(roomId) {
     dates: { 1: '', 2: '' },
     dateSubmitted: { 1: false, 2: false },
     scores: { 1: 0, 2: 0 },
-    game1: {
-      pressStart: { 1: null, 2: null },
-      submitted: { 1: false, 2: false },
-      durations: { 1: null, 2: null },
-      winner: null,
-      continueReady: { 1: false, 2: false },
+    game1: createGame1State(),
+    game2: createGame2State(),
+    game3: createGame3State(),
+    phaseData: {
+      ackReady: { 1: false, 2: false },
+      revengeAlert: null,
+      badgeWords: [],
     },
-    game2: {
-      object: null,
-      startTime: null,
-      uploadTimes: { 1: null, 2: null },
-      visionResults: { 1: null, 2: null },
-      submitted: { 1: false, 2: false },
-      winner: null,
-      processing: false,
-    },
-    game3: {
-      words: { 1: [], 2: [] },
-      customWord: { 1: '', 2: '' },
-      submitted: { 1: false, 2: false },
-      aiText: '',
-      generating: false,
-      continueReady: { 1: false, 2: false },
-    },
-    phaseData: {},
   };
+}
+
+export function createGame1State() {
+  return {
+    pressStart: { 1: null, 2: null },
+    submitted: { 1: false, 2: false },
+    durations: { 1: null, 2: null },
+    winner: null,
+    loopNext: { 1: false, 2: false },
+  };
+}
+
+export function createGame2State() {
+  return {
+    currentRound: 1,
+    roundWins: { 1: 0, 2: 0 },
+    rounds: [],
+    object: null,
+    startTime: null,
+    uploadTimes: { 1: null, 2: null },
+    visionResults: { 1: null, 2: null },
+    submitted: { 1: false, 2: false },
+    processing: false,
+    nextRoundReady: { 1: false, 2: false },
+    gameWinner: null,
+    loopNext: { 1: false, 2: false },
+  };
+}
+
+export function createGame3State() {
+  return {
+    words: { 1: [], 2: [] },
+    customWord: { 1: '', 2: '' },
+    submitted: { 1: false, 2: false },
+    aiText: '',
+    generating: false,
+    loopNext: { 1: false, 2: false },
+  };
+}
+
+export function resetAck(room) {
+  room.phaseData.ackReady = { 1: false, 2: false };
 }
 
 export function assignPlayer(room, socketId) {
@@ -94,13 +114,19 @@ export function bothSubmitted(obj) {
   return obj[1] && obj[2];
 }
 
-export function pickRandomObject() {
-  return OBJECTS[Math.floor(Math.random() * OBJECTS.length)];
+export function pickRandomObject(exclude = []) {
+  const pool = OBJECTS.filter((o) => !exclude.includes(o));
+  const list = pool.length ? pool : OBJECTS;
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 export function getBadgeWords(count = 20) {
   const shuffled = [...BADGE_WORDS].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
+}
+
+export function getName(room, slot) {
+  return room.names[slot]?.trim() || '...';
 }
 
 export function calcGame1Winner(room) {
@@ -113,7 +139,7 @@ export function calcGame1Winner(room) {
   return null;
 }
 
-export function calcGame2Winner(room) {
+export function calcRoundWinner(room) {
   const r1 = room.game2.visionResults[1];
   const r2 = room.game2.visionResults[2];
   const t1 = room.game2.uploadTimes[1];
@@ -128,9 +154,26 @@ export function calcGame2Winner(room) {
   return null;
 }
 
-export function getDisplayName(room, slot) {
-  const n = room.names[slot]?.trim();
-  return n || '...';
+export function calcGame2OverallWinner(room) {
+  if (room.game2.roundWins[1] > room.game2.roundWins[2]) return 1;
+  if (room.game2.roundWins[2] > room.game2.roundWins[1]) return 2;
+  return null;
+}
+
+export function resetGame2Round(room) {
+  const used = room.game2.rounds.map((r) => r.object);
+  room.game2.object = pickRandomObject(used);
+  room.game2.startTime = Date.now();
+  room.game2.submitted = { 1: false, 2: false };
+  room.game2.uploadTimes = { 1: null, 2: null };
+  room.game2.visionResults = { 1: null, 2: null };
+  room.game2.processing = false;
+  room.game2.nextRoundReady = { 1: false, 2: false };
+}
+
+export function initGame2(room) {
+  room.game2 = createGame2State();
+  resetGame2Round(room);
 }
 
 export function serializeRoom(room) {
@@ -146,25 +189,32 @@ export function serializeRoom(room) {
       durations: { ...room.game1.durations },
       submitted: { ...room.game1.submitted },
       winner: room.game1.winner,
-      continueReady: { ...room.game1.continueReady },
+      loopNext: { ...room.game1.loopNext },
     },
     game2: {
+      currentRound: room.game2.currentRound,
+      roundWins: { ...room.game2.roundWins },
+      rounds: room.game2.rounds.map((r) => ({ ...r })),
       object: room.game2.object,
-      startTime: room.game2.startTime,
       uploadTimes: { ...room.game2.uploadTimes },
       visionResults: { ...room.game2.visionResults },
       submitted: { ...room.game2.submitted },
-      winner: room.game2.winner,
       processing: room.game2.processing,
+      nextRoundReady: { ...room.game2.nextRoundReady },
+      gameWinner: room.game2.gameWinner,
+      loopNext: { ...room.game2.loopNext },
     },
     game3: {
       words: { 1: [...room.game3.words[1]], 2: [...room.game3.words[2]] },
       submitted: { ...room.game3.submitted },
       aiText: room.game3.aiText,
       generating: room.game3.generating,
-      continueReady: { ...room.game3.continueReady },
+      loopNext: { ...room.game3.loopNext },
     },
-    badgeWords: room.phaseData.badgeWords || [],
-    phaseData: room.phaseData,
+    phaseData: {
+      ackReady: { ...room.phaseData.ackReady },
+      revengeAlert: room.phaseData.revengeAlert,
+      badgeWords: room.phaseData.badgeWords || [],
+    },
   };
 }
