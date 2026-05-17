@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import SplitScreen from './SplitScreen';
 import LiveCamera from './LiveCamera';
@@ -61,7 +61,7 @@ export default function Phase4PixelHunt({ slot, state, emit }) {
             disabled={acked}
             className={BTN_ACK}
           >
-            [ Următorul Obiect ]
+            Următorul Obiect
           </button>
           {acked && !otherAcked && (
             <p className="text-lg text-zinc-400">{waitingForPeer(state, slot)}</p>
@@ -74,11 +74,14 @@ export default function Phase4PixelHunt({ slot, state, emit }) {
   const submitted = g2?.submitted?.[slot];
   const processing = g2?.processing;
 
-  const handleCapture = (base64) => {
-    if (submitted || captured) return;
-    setCaptured(true);
-    emit('game2-photo', { base64 });
-  };
+  const handleCapture = useCallback(
+    (base64) => {
+      if (submitted || captured) return;
+      setCaptured(true);
+      emit('game2-photo', { base64 });
+    },
+    [submitted, captured, emit]
+  );
 
   return (
     <SplitScreen slot={slot}>
@@ -91,7 +94,12 @@ export default function Phase4PixelHunt({ slot, state, emit }) {
             text={processing ? 'AI validează imaginile...' : waitingForPeer(state, slot)}
           />
         ) : (
-          <LiveCamera object={g2?.object} onCapture={handleCapture} disabled={submitted} />
+          <LiveCamera
+            key={`cam-r${g2?.currentRound}-${slot}`}
+            object={g2?.object}
+            onCapture={handleCapture}
+            disabled={submitted}
+          />
         )}
       </motion.div>
     </SplitScreen>

@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { BTN_CONTINUE } from '../styles';
 import { waitingMessage } from '../utils/names';
 
-export default function ContinueButton({ state, slot, ready, onContinue, label = '[ Mai departe ]' }) {
+export default function ContinueButton({ state, slot, ready, onContinue, label = 'Mai departe' }) {
   const pressed = ready?.[slot];
   const otherReady = ready?.[slot === 1 ? 2 : 1];
 

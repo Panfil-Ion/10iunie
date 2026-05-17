@@ -78,7 +78,7 @@ function setRevengeAlert(room, slot) {
   }, 3000);
 }
 
-function advanceFromAck(room) {
+function advanceFromCinematic(room) {
   switch (room.phase) {
     case PHASES.PHASE_1_SYNC:
       advancePhase(room, PHASES.PHASE_1_UNLOCK);
@@ -86,6 +86,22 @@ function advanceFromAck(room) {
     case PHASES.PHASE_1_UNLOCK:
       advancePhase(room, PHASES.PHASE_2);
       break;
+    case PHASES.PHASE_2_LOADING:
+      advancePhase(room, PHASES.PHASE_2_TRANSITION);
+      break;
+    default:
+      break;
+  }
+}
+
+const CINEMATIC_PHASES = new Set([
+  PHASES.PHASE_1_SYNC,
+  PHASES.PHASE_1_UNLOCK,
+  PHASES.PHASE_2_LOADING,
+]);
+
+function advanceFromAck(room) {
+  switch (room.phase) {
     case PHASES.PHASE_2_TRANSITION:
       advancePhase(room, PHASES.PHASE_3_RULES);
       break;
@@ -216,7 +232,20 @@ io.on('connection', (socket) => {
     broadcastState(currentRoom);
 
     if (bothSubmitted(currentRoom.dateSubmitted) && currentRoom.phase === PHASES.PHASE_2) {
-      advancePhase(currentRoom, PHASES.PHASE_2_TRANSITION);
+      advancePhase(currentRoom, PHASES.PHASE_2_LOADING);
+    }
+  });
+
+  socket.on('cinematic-done', () => {
+    if (!currentRoom || !playerSlot) return;
+    if (!CINEMATIC_PHASES.has(currentRoom.phase)) return;
+    if (!currentRoom.phaseData.cinematicReady) {
+      currentRoom.phaseData.cinematicReady = { 1: false, 2: false };
+    }
+    currentRoom.phaseData.cinematicReady[playerSlot] = true;
+    broadcastState(currentRoom);
+    if (bothSubmitted(currentRoom.phaseData.cinematicReady)) {
+      advanceFromCinematic(currentRoom);
     }
   });
 

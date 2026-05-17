@@ -4,6 +4,7 @@ export const PHASES = {
   PHASE_1_SYNC: 'PHASE_1_SYNC',
   PHASE_1_UNLOCK: 'PHASE_1_UNLOCK',
   PHASE_2: 'PHASE_2',
+  PHASE_2_LOADING: 'PHASE_2_LOADING',
   PHASE_2_TRANSITION: 'PHASE_2_TRANSITION',
   PHASE_3_RULES: 'PHASE_3_RULES',
   PHASE_3: 'PHASE_3',
@@ -46,6 +47,7 @@ export function createRoom(roomId) {
     game3: createGame3State(),
     phaseData: {
       ackReady: { 1: false, 2: false },
+      cinematicReady: { 1: false, 2: false },
       revengeAlert: null,
       badgeWords: [],
     },
@@ -92,6 +94,7 @@ export function createGame3State() {
 
 export function resetAck(room) {
   room.phaseData.ackReady = { 1: false, 2: false };
+  room.phaseData.cinematicReady = { 1: false, 2: false };
 }
 
 export function assignPlayer(room, socketId) {
@@ -213,6 +216,7 @@ export function serializeRoom(room) {
     },
     phaseData: {
       ackReady: { ...room.phaseData.ackReady },
+      cinematicReady: { ...(room.phaseData.cinematicReady || { 1: false, 2: false }) },
       revengeAlert: room.phaseData.revengeAlert,
       badgeWords: room.phaseData.badgeWords || [],
     },

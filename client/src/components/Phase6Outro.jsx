@@ -7,7 +7,7 @@ const FUGES_BEFORE_TEXT3 = 3;
 
 export default function Phase6Outro() {
   const [phase, setPhase] = useState('intro');
-  const [buttonText, setButtonText] = useState('[ Închide Conexiunea ]');
+  const [buttonText, setButtonText] = useState('Închide Conexiunea');
   const [fleeCount, setFleeCount] = useState(0);
   const [fixed, setFixed] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -32,9 +32,9 @@ export default function Phase6Outro() {
     setFleeCount(next);
 
     if (next === FUGES_BEFORE_TEXT1) {
-      setButtonText('[ Bine, bine. Lasă-mă să plec. ]');
+      setButtonText('Bine, bine. Lasă-mă să plec.');
     } else if (next === FUGES_BEFORE_TEXT1 + FUGES_BEFORE_TEXT2) {
-      setButtonText('[ Promit că nu mai fug. Apasă aici. ]');
+      setButtonText('Promit că nu mai fug. Apasă aici.');
     } else if (next === FUGES_BEFORE_TEXT1 + FUGES_BEFORE_TEXT2 + FUGES_BEFORE_TEXT3) {
       setFixed(true);
       setPos({ x: 0, y: 0 });

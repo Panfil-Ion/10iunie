@@ -19,7 +19,7 @@ export default function GameLoopButtons({ state, slot, emit, game }) {
           onClick={() => emit('game-loop-action', { game, action: 'retry' })}
           className={BTN_RETRY}
         >
-          [ Mai încearcă ]
+          Mai încearcă
         </button>
         <button
           type="button"
@@ -27,7 +27,7 @@ export default function GameLoopButtons({ state, slot, emit, game }) {
           disabled={pressedNext}
           className={BTN_CONTINUE}
         >
-          [ Mai departe ]
+          Mai departe
         </button>
       </div>
       {pressedNext && !otherNext && (

@@ -1,196 +1,149 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
 import { BTN_SUBMIT } from '../styles';
 
 export default function LiveCamera({ object, onCapture, disabled }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-  const shotLockRef = useRef(false);
   const [error, setError] = useState(null);
-  const [ready, setReady] = useState(false);
-  const [capturing, setCapturing] = useState(false);
-
-  const markReadyIfPossible = useCallback(() => {
-    const video = videoRef.current;
-    if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-      setReady(true);
-      setError(null);
-    }
-  }, []);
-
-  const attachStreamToVideo = useCallback(async (videoEl) => {
-    if (!videoEl || !streamRef.current) return;
-    if (videoEl.srcObject !== streamRef.current) {
-      videoEl.srcObject = streamRef.current;
-    }
-    try {
-      await videoEl.play();
-    } catch {
-      // iOS: play() poate eșua până la primul tap — rezolvăm la apăsarea butonului
-    }
-    markReadyIfPossible();
-  }, [markReadyIfPossible]);
-
-  const setVideoRef = useCallback(
-    (node) => {
-      videoRef.current = node;
-      if (node) attachStreamToVideo(node);
-    },
-    [attachStreamToVideo]
-  );
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    let active = true;
+    let alive = true;
 
-    async function startCamera() {
+    async function start() {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setError('Camera indisponibilă. Deschide linkul prin HTTPS (nu din preview).');
+        setError('Camera necesita HTTPS si browser modern.');
         return;
       }
 
-      const tries = [
+      const options = [
         { video: { facingMode: { ideal: 'environment' } }, audio: false },
         { video: { facingMode: 'user' }, audio: false },
         { video: true, audio: false },
       ];
 
       let stream = null;
-      for (const constraints of tries) {
+      for (const opts of options) {
         try {
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          stream = await navigator.mediaDevices.getUserMedia(opts);
           break;
         } catch {
-          /* încearcă următoarea constrângere */
+          /* next */
         }
       }
 
-      if (!active) {
+      if (!alive) {
         stream?.getTracks().forEach((t) => t.stop());
         return;
       }
 
       if (!stream) {
-        setError('Nu am putut accesa camera. Permite accesul în setările browserului.');
+        setError('Permite accesul la camera in browser.');
         return;
       }
 
       streamRef.current = stream;
-      if (videoRef.current) await attachStreamToVideo(videoRef.current);
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+        try {
+          await video.play();
+        } catch {
+          /* unele telefoane pornesc la primul tap */
+        }
+      }
     }
 
-    startCamera();
+    start();
 
     return () => {
-      active = false;
+      alive = false;
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
-      setReady(false);
     };
-  }, [attachStreamToVideo]);
+  }, []);
 
-  const takePhoto = useCallback(async () => {
-    if (disabled || capturing || shotLockRef.current) return;
-    shotLockRef.current = true;
+  async function handleShutter() {
+    if (disabled || busy) return;
 
     const video = videoRef.current;
-    if (!video || !streamRef.current) {
-      setError('Camera nu e pregătită. Așteaptă un moment.');
-      shotLockRef.current = false;
+    if (!video) {
+      setError('Camera nu e gata.');
       return;
     }
 
+    if (!streamRef.current) {
+      setError('Stream camera lipseste. Reincarca pagina.');
+      return;
+    }
+
+    setBusy(true);
     setError(null);
 
     try {
+      if (!video.srcObject) {
+        video.srcObject = streamRef.current;
+      }
       await video.play();
     } catch {
-      /* continuă — unele browsere au deja stream activ */
+      /* ok */
     }
 
-    markReadyIfPossible();
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const w = video.videoWidth;
     const h = video.videoHeight;
     if (!w || !h) {
-      setError('Camera se încărcă… apasă din nou peste o secundă.');
-      shotLockRef.current = false;
+      setBusy(false);
+      setError('Asteapta 1 secunda si incearca din nou.');
       return;
     }
-
-    setCapturing(true);
 
     try {
       const canvas = document.createElement('canvas');
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas indisponibil');
       ctx.drawImage(video, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      if (!dataUrl || dataUrl.length < 200) {
-        throw new Error('Imagine goală');
+      const base64 = canvas.toDataURL('image/jpeg', 0.82);
+      if (!base64 || base64.length < 500) {
+        throw new Error('empty');
       }
-      onCapture(dataUrl);
-    } catch (err) {
-      console.error('Capture error:', err);
-      setError('Nu s-a putut face poza. Încearcă din nou.');
-      setCapturing(false);
-      shotLockRef.current = false;
+      onCapture(base64);
+    } catch {
+      setBusy(false);
+      setError('Nu s-a putut captura poza.');
     }
-  }, [disabled, capturing, markReadyIfPossible, onCapture]);
-
-  if (error && !streamRef.current) {
-    return <p className="text-lg text-red-400 text-center px-4">{error}</p>;
   }
 
-  const shutterDisabled = disabled || capturing;
-
   return (
-    <motion.div className="flex flex-col items-center gap-4 w-full max-w-sm">
+    <div className="flex flex-col items-center gap-4 w-full max-w-sm relative z-10">
       <p className="text-lg text-zinc-300 text-center">
-        Obiect: <span className="text-white font-bold">{object}</span>
+        Obiect: <span className="text-white font-bold">{object || '...'}</span>
       </p>
+
       <div className="relative w-full aspect-[3/4] bg-black rounded-xl overflow-hidden border-2 border-zinc-600">
         <video
-          ref={setVideoRef}
-          playsInline
+          ref={videoRef}
           muted
           autoPlay
-          onLoadedMetadata={markReadyIfPossible}
-          onLoadedData={markReadyIfPossible}
-          onPlaying={markReadyIfPossible}
+          playsInline
           className="w-full h-full object-cover"
         />
-        {!ready && (
-          <motion.div className="absolute inset-0 flex items-center justify-center text-zinc-500 pointer-events-none bg-black/40">
-            Se pornește camera...
-          </motion.div>
-        )}
       </div>
 
-      {error && (
-        <p className="text-base text-amber-400 text-center px-2">{error}</p>
-      )}
+      {error && <p className="text-base text-amber-400 text-center px-2">{error}</p>}
 
       <button
         type="button"
-        onPointerUp={(e) => {
-          if (e.pointerType === 'mouse' && e.button !== 0) return;
-          e.preventDefault();
-          takePhoto();
-        }}
-        disabled={shutterDisabled}
-        className={`${BTN_SUBMIT} w-full bg-white text-zinc-950 border-white hover:bg-zinc-200 touch-manipulation select-none active:scale-[0.98] disabled:opacity-40`}
-        style={{ WebkitTapHighlightColor: 'transparent' }}
+        onClick={handleShutter}
+        disabled={disabled || busy}
+        className={`${BTN_SUBMIT} relative z-20 w-full bg-white text-zinc-950 border-white hover:bg-zinc-200 touch-manipulation min-h-[56px]`}
       >
-        {capturing ? 'Se trimite...' : '[ FĂ POZA ]'}
+        {busy ? 'Se trimite...' : 'FĂ POZA'}
       </button>
-
-      {!ready && !error && (
-        <p className="text-sm text-zinc-500 text-center">
-          Dacă vezi imaginea dar butonul nu merge, apasă o dată pe ecranul camerei, apoi pe buton.
-        </p>
-      )}
-    </motion.div>
+    </div>
   );
 }

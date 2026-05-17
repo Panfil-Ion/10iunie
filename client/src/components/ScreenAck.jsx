@@ -26,7 +26,7 @@ export default function ScreenAck({ state, slot, emit, children, long = false })
         disabled={acked}
         className={BTN_ACK}
       >
-        [ Am înțeles / Începe ]
+        Am înțeles / Începe
       </button>
 
       {acked && !otherAcked && (
