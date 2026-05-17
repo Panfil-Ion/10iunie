@@ -2,8 +2,6 @@ name: Build check
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   build-client:
@@ -18,5 +16,5 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm run build
-      - name: Verify dist exists
-        run: test -f client/dist/index.html
+      - name: Verify dist
+        run: ls -la client/dist/

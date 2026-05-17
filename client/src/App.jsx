@@ -59,7 +59,14 @@ export default function App() {
         {waiting ? (
           <WaitingScreen key="wait" connected={connected} error={error} />
         ) : transitionText ? (
-          <motion.div key={phase} className="h-full" exit={{ opacity: 0 }} transition={{ duration: 1.5 }}>
+          <motion.div
+            key={phase}
+            className="h-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.5, ease: 'easeInOut' }}
+          >
             <FullScreenText long={LONG_TEXT_PHASES.includes(phase)}>{transitionText}</FullScreenText>
           </motion.div>
         ) : (
