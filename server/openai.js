@@ -19,6 +19,7 @@ REGULA 1: Povestea TREBUIE să înceapă cu 'A fost odată ca niciodată'. REGUL
 Cat despre Ion
 Ii place foarte mult sportul, muzica, canta la 8 instrumente muzicale, practica peste 4 genuri de sport, invata in IT, lucreaza ca bucatar la hotel, si lucreaza ca copywriter cu Americanii. II place sa citeasca, sa-si dezvolte disciplina la maxim. sa jongleze cu 3 obiecte si sa nu aiba mai deloc odihna.
 REGULA 4 (CRITICĂ): Tonul trebuie să fie prietenos, auto-ironic și amuzant, DAR trebuie să păstreze limitele. Nu scrie o poveste de dragoste siropoasă sau prea romantică, deoarece ei abia se reconectează ca prieteni după o pauză. Păstrează totul într-o zonă de 'chimie amicală și glume interne'.
+REGULA 5 (STIL ȘI LIMBAJ CRITIC): Scrie povestea într-o limbă română fluentă, modernă și naturală. ESTE STRICT INTERZIS să folosești traduceri literale ciudate din engleză (ex: fără "cearșaf de umor", fără "glume dăunătoare"). Folosește un limbaj relaxat, de tineri. Păstrează clar ideea că sunt doar doi oameni cool care se reconectează și se bucură de ziua lor, fără pic de presiune romantică, ci doar cu o chimie amicală și ironii fine. Fii scurt, captivant și evită frazele întortocheate.
 
 Finalizează povestea cu o concluzie caldă, amuzantă, urându-le amândurora un 'La mulți ani' pentru data de 10 Iunie.`;
 
