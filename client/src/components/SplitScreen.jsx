@@ -22,36 +22,25 @@ export default function SplitScreen({
   }
 
   const peerPanel = (
-    <motion.div
-      layout
-      className="flex-1 flex flex-col items-center justify-center border-zinc-800/60 px-6 min-h-0"
-    >
-      <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-600 mb-4">
-        {slot === 1 ? 'Player 2' : 'Player 1'}
-      </span>
-      <div className="opacity-40 pointer-events-none text-center w-full max-w-xs">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
+      <motion.div className="opacity-50 pointer-events-none text-center w-full max-w-md">
         {peerName !== undefined && (
-          <p className="text-lg text-zinc-400 font-light tracking-wide min-h-[28px]">
-            {peerName || '...'}
-          </p>
+          <p className="text-2xl text-zinc-400 font-light min-h-[36px]">{peerName || '...'}</p>
         )}
         {peerDate !== undefined && (
-          <p className="text-lg text-zinc-400 font-light tracking-wide min-h-[28px]">
+          <p className="text-2xl text-zinc-400 font-light tracking-widest min-h-[36px]">
             {peerDate || '...'}
           </p>
         )}
         {peerContent}
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 
   const ownPanel = (
-    <motion.div
-      layout
-      className="flex-1 flex flex-col items-center justify-center px-6 min-h-0 border-zinc-800/60"
-    >
+    <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
       {children}
-    </motion.div>
+    </div>
   );
 
   return (
@@ -59,13 +48,13 @@ export default function SplitScreen({
       {slot === 2 ? (
         <>
           {ownPanel}
-          <div className="border-t border-zinc-800/60 shrink-0" />
+          <div className="border-t border-zinc-800 shrink-0" />
           {peerPanel}
         </>
       ) : (
         <>
           {peerPanel}
-          <motion.div className="border-t border-zinc-800/60 shrink-0" />
+          <div className="border-t border-zinc-800 shrink-0" />
           {ownPanel}
         </>
       )}

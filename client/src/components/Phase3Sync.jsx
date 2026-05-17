@@ -1,40 +1,49 @@
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import SplitScreen from './SplitScreen';
+import ContinueButton from './ContinueButton';
+import LoadingSpinner from './LoadingSpinner';
+import { BTN_HOLD } from '../styles';
+import { getName, otherSlot, waitingMessage } from '../utils/names';
+
 export default function Phase3Sync({ slot, state, emit }) {
   const pressing = useRef(false);
 
+  const n1 = getName(state, 1);
+  const n2 = getName(state, 2);
+
   if (state?.phase === 'PHASE_3_RESULT') {
-    const d1 = state.game1.durations[1];
-    const d2 = state.game1.durations[2];
     const winner = state.game1.winner;
-    const myDur = state.game1.durations[slot];
-    const peerDur = state.game1.durations[slot === 1 ? 2 : 1];
+    const winnerName = winner ? getName(state, winner) : null;
+
+    let resultLine = `${n1} a ținut ${state.game1.durations[1]}s, ${n2} a ținut ${state.game1.durations[2]}s.`;
+    if (winnerName) {
+      resultLine += ` Punct pentru ${winnerName}.`;
+    } else {
+      resultLine += ' Egalitate.';
+    }
 
     return (
       <SplitScreen slot={slot} unified>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex flex-col items-center gap-4 text-center px-6"
+          className="flex flex-col items-center text-center px-6 max-w-xl"
         >
-          <p className="text-sm text-zinc-400">
-            Tu: <span className="text-zinc-200">{myDur}s</span> — Peer:{' '}
-            <span className="text-zinc-200">{peerDur}s</span>
-          </p>
-          <p className="font-serif text-lg text-zinc-300 italic">
-            {winner === slot
-              ? 'Cel mai apropiat de 10.00s. +1 punct.'
-              : winner
-                ? 'Peer-ul a fost mai aproape de 10.00s.'
-                : 'Egalitate perfectă (sau aproape).'}
-          </p>
+          <p className="text-xl md:text-2xl text-zinc-200 leading-relaxed mb-2">{resultLine}</p>
+          <ContinueButton
+            state={state}
+            slot={slot}
+            ready={state.game1.continueReady}
+            onContinue={() => emit('phase-continue')}
+          />
         </motion.div>
       </SplitScreen>
     );
   }
 
   const submitted = state?.game1?.submitted?.[slot];
+  const otherSubmitted = state?.game1?.submitted?.[otherSlot(slot)];
 
   const onDown = (e) => {
     e.preventDefault();
@@ -57,22 +66,26 @@ export default function Phase3Sync({ slot, state, emit }) {
         animate={{ opacity: 1 }}
         className="flex flex-col items-center gap-8 text-center px-4"
       >
-        <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
-          Ține apăsat exact 10.00 secunde în mintea ta. Ia degetul când timpul expiră.
-        </p>
         {submitted ? (
-          <p className="text-zinc-600 text-sm">Măsurare înregistrată...</p>
+          <LoadingSpinner
+            text={
+              otherSubmitted
+                ? 'Se calculează rezultatele...'
+                : waitingMessage(state, slot)
+            }
+          />
         ) : (
           <motion.button
-            className="w-24 h-24 rounded-full border border-zinc-700 flex items-center justify-center text-zinc-400 text-xs select-none touch-none"
-            whileTap={{ scale: 0.95, borderColor: 'rgb(161 161 170)' }}
+            type="button"
+            className={BTN_HOLD}
+            whileTap={{ scale: 0.95, borderColor: '#fff' }}
             onMouseDown={onDown}
             onMouseUp={onUp}
             onMouseLeave={onUp}
             onTouchStart={onDown}
             onTouchEnd={onUp}
           >
-            HOLD
+            ȚINE
           </motion.button>
         )}
       </motion.div>

@@ -1,44 +1,34 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import SplitScreen from './SplitScreen';
-import FullScreenText from './FullScreenText';
 import LoadingSpinner from './LoadingSpinner';
+import { BTN_SUBMIT } from '../styles';
+import { getName, waitingMessage } from '../utils/names';
 
 export default function Phase4PixelHunt({ slot, state, emit }) {
-  const fileRef = useRef(null);
-  const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  if (state?.phase === 'PHASE_4_INTRO') {
-    return (
-      <FullScreenText>
-        Timpul este relativ, dar reacțiile sunt reale. Pregătiți camerele.
-      </FullScreenText>
-    );
-  }
+  const n1 = getName(state, 1);
+  const n2 = getName(state, 2);
 
   if (state?.phase === 'PHASE_4_RESULT') {
-    const myTime = state.game2.uploadTimes[slot];
-    const peerTime = state.game2.uploadTimes[slot === 1 ? 2 : 1];
-    const myResult = state.game2.visionResults[slot];
-    const peerResult = state.game2.visionResults[slot === 1 ? 2 : 1];
     const winner = state.game2.winner;
+    const winnerName = winner ? getName(state, winner) : null;
+    const t1 = (state.game2.uploadTimes[1] / 1000).toFixed(2);
+    const t2 = (state.game2.uploadTimes[2] / 1000).toFixed(2);
+
+    let line = `${n1}: ${state.game2.visionResults[1]} (${t1}s) — ${n2}: ${state.game2.visionResults[2]} (${t2}s).`;
+    if (winnerName) line += ` Punct pentru ${winnerName}.`;
 
     return (
       <SplitScreen slot={slot} unified>
-        <motion.div
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center px-6 space-y-3"
+          className="text-xl md:text-2xl text-zinc-200 text-center px-6 leading-relaxed"
         >
-          <p className="text-sm text-zinc-400">
-            Tu: {myResult} ({(myTime / 1000).toFixed(2)}s) — Peer: {peerResult} (
-            {(peerTime / 1000).toFixed(2)}s)
-          </p>
-          <p className="font-serif text-lg text-zinc-300 italic">
-            {winner === slot ? '+1 punct (mai rapid + validat)' : winner ? 'Peer-ul a câștigat runda.' : 'Nimeni nu a câștigat.'}
-          </p>
-        </motion.div>
+          {line}
+        </motion.p>
       </SplitScreen>
     );
   }
@@ -53,12 +43,11 @@ export default function Phase4PixelHunt({ slot, state, emit }) {
 
     const reader = new FileReader();
     reader.onload = () => {
-      const base64 = reader.result;
-      setPreview(base64);
       setUploading(true);
-      emit('game2-photo', { base64 });
+      emit('game2-photo', { base64: reader.result });
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   return (
@@ -66,42 +55,32 @@ export default function Phase4PixelHunt({ slot, state, emit }) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex flex-col items-center gap-6 text-center px-4 max-w-sm"
+        className="flex flex-col items-center gap-8 text-center px-4 max-w-lg"
       >
-        <p className="text-xs text-zinc-500 leading-relaxed">
-          Sistemul cere validare fizică. Aveți 30 de secunde să fotografiați:{' '}
-          <span className="text-zinc-300">{object}</span>.
+        <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed">
+          Fotografiază: <span className="text-white font-medium">{object}</span>
         </p>
 
         {submitted || uploading ? (
           <LoadingSpinner
-            text={processing ? 'AI validează imaginile...' : 'Imagine trimisă. Se așteaptă peer-ul...'}
+            text={
+              processing
+                ? 'AI validează imaginile...'
+                : waitingMessage(state, slot)
+            }
           />
         ) : (
-          <>
+          <label className={`${BTN_SUBMIT} cursor-pointer relative inline-flex items-center justify-center min-w-[220px]`}>
+            <span className="pointer-events-none">Deschide Camera</span>
             <input
-              ref={fileRef}
               type="file"
               accept="image/*"
               capture="environment"
-              className="hidden"
               onChange={handleFile}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              aria-label="Deschide camera"
             />
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="px-8 py-3 border border-zinc-800 text-sm text-zinc-300 hover:border-zinc-600 transition-all duration-500"
-            >
-              Deschide Camera
-            </button>
-          </>
-        )}
-
-        {preview && (
-          <img
-            src={preview}
-            alt="preview"
-            className="w-20 h-20 object-cover rounded opacity-50 border border-zinc-800"
-          />
+          </label>
         )}
       </motion.div>
     </SplitScreen>

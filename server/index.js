@@ -7,7 +7,6 @@ import { fileURLToPath } from 'url';
 import {
   createRoom,
   assignPlayer,
-  getPlayerSlot,
   bothPlayersConnected,
   bothSubmitted,
   pickRandomObject,
@@ -16,6 +15,7 @@ import {
   calcGame2Winner,
   serializeRoom,
   PHASES,
+  TIMING,
 } from './gameState.js';
 import { verifyObjectInImage, generateProfilerAnalysis } from './openai.js';
 
@@ -76,8 +76,19 @@ function advancePhase(room, newPhase, extra = {}) {
 
 function schedulePhase(room, delayMs, callback) {
   setTimeout(() => {
-    if (rooms.has(room.id)) callback();
+    if (rooms.has(room.id) && room.phase) callback();
   }, delayMs);
+}
+
+function startPhase4Game(room) {
+  room.game2.object = pickRandomObject();
+  room.game2.startTime = Date.now();
+  room.game2.submitted = { 1: false, 2: false };
+  room.game2.uploadTimes = { 1: null, 2: null };
+  room.game2.visionResults = { 1: null, 2: null };
+  room.game2.winner = null;
+  room.game2.processing = false;
+  advancePhase(room, PHASES.PHASE_4);
 }
 
 io.on('connection', (socket) => {
@@ -112,15 +123,19 @@ io.on('connection', (socket) => {
     socket.to(currentRoom.id).emit('peer-typing', { field: 'name', slot: playerSlot, value });
   });
 
-  socket.on('name-submit', () => {
+  socket.on('name-submit', ({ value }) => {
     if (!currentRoom || !playerSlot) return;
+    if (value?.trim()) currentRoom.names[playerSlot] = value.trim();
     currentRoom.nameSubmitted[playerSlot] = true;
     broadcastState(currentRoom);
 
     if (bothSubmitted(currentRoom.nameSubmitted) && currentRoom.phase === PHASES.PHASE_1) {
       advancePhase(currentRoom, PHASES.PHASE_1_SYNC);
-      schedulePhase(currentRoom, 1500, () => {
-        advancePhase(currentRoom, PHASES.PHASE_2);
+      schedulePhase(currentRoom, TIMING.SHORT, () => {
+        advancePhase(currentRoom, PHASES.PHASE_1_UNLOCK);
+        schedulePhase(currentRoom, TIMING.MEDIUM, () => {
+          advancePhase(currentRoom, PHASES.PHASE_2);
+        });
       });
     }
   });
@@ -137,9 +152,12 @@ io.on('connection', (socket) => {
     broadcastState(currentRoom);
 
     if (bothSubmitted(currentRoom.dateSubmitted) && currentRoom.phase === PHASES.PHASE_2) {
-      advancePhase(currentRoom, PHASES.PHASE_2_UNLOCK);
-      schedulePhase(currentRoom, 3000, () => {
-        advancePhase(currentRoom, PHASES.PHASE_3);
+      advancePhase(currentRoom, PHASES.PHASE_2_TRANSITION);
+      schedulePhase(currentRoom, TIMING.MEDIUM, () => {
+        advancePhase(currentRoom, PHASES.PHASE_3_RULES);
+        schedulePhase(currentRoom, TIMING.SHORT, () => {
+          advancePhase(currentRoom, PHASES.PHASE_3);
+        });
       });
     }
   });
@@ -162,15 +180,31 @@ io.on('connection', (socket) => {
       const winner = calcGame1Winner(currentRoom);
       currentRoom.game1.winner = winner;
       if (winner) currentRoom.scores[winner]++;
+      currentRoom.game1.continueReady = { 1: false, 2: false };
       advancePhase(currentRoom, PHASES.PHASE_3_RESULT);
-      schedulePhase(currentRoom, 4000, () => {
-        advancePhase(currentRoom, PHASES.PHASE_4_INTRO);
-        schedulePhase(currentRoom, 3000, () => {
-          currentRoom.game2.object = pickRandomObject();
-          currentRoom.game2.startTime = Date.now();
-          advancePhase(currentRoom, PHASES.PHASE_4);
-        });
+    }
+  });
+
+  socket.on('phase-continue', () => {
+    if (!currentRoom || !playerSlot) return;
+
+    if (currentRoom.phase === PHASES.PHASE_3_RESULT) {
+      currentRoom.game1.continueReady[playerSlot] = true;
+      broadcastState(currentRoom);
+      if (!bothSubmitted(currentRoom.game1.continueReady)) return;
+
+      advancePhase(currentRoom, PHASES.PHASE_4_RULES);
+      schedulePhase(currentRoom, TIMING.MEDIUM, () => {
+        startPhase4Game(currentRoom);
       });
+      return;
+    }
+
+    if (currentRoom.phase === PHASES.PHASE_5_RESULT) {
+      currentRoom.game3.continueReady[playerSlot] = true;
+      broadcastState(currentRoom);
+      if (!bothSubmitted(currentRoom.game3.continueReady)) return;
+      advancePhase(currentRoom, PHASES.PHASE_6);
     }
   });
 
@@ -192,11 +226,11 @@ io.on('connection', (socket) => {
       currentRoom.game2.visionResults[playerSlot] = 'NU';
     }
 
-    currentRoom.game2.processing =
+    const waitingOnVision =
       currentRoom.game2.submitted[1] &&
       currentRoom.game2.submitted[2] &&
       (!currentRoom.game2.visionResults[1] || !currentRoom.game2.visionResults[2]);
-
+    currentRoom.game2.processing = waitingOnVision;
     broadcastState(currentRoom);
 
     if (bothSubmitted(currentRoom.game2.submitted)) {
@@ -207,12 +241,12 @@ io.on('connection', (socket) => {
         currentRoom.game2.winner = winner;
         if (winner) currentRoom.scores[winner]++;
         advancePhase(currentRoom, PHASES.PHASE_4_RESULT);
-        schedulePhase(currentRoom, 4000, () => {
+        schedulePhase(currentRoom, TIMING.MEDIUM, () => {
           currentRoom.phaseData.badgeWords = getBadgeWords(20);
-          advancePhase(currentRoom, PHASES.PHASE_5_INTRO);
-          schedulePhase(currentRoom, 3000, () => {
-            advancePhase(currentRoom, PHASES.PHASE_5);
-          });
+          currentRoom.game3.submitted = { 1: false, 2: false };
+          currentRoom.game3.continueReady = { 1: false, 2: false };
+          currentRoom.game3.aiText = '';
+          advancePhase(currentRoom, PHASES.PHASE_5);
         });
       }
     }
@@ -234,20 +268,14 @@ io.on('connection', (socket) => {
     room.game3.generating = true;
     broadcastState(room);
 
-    const allWords1 = [
-      ...room.game3.words[1],
-      room.game3.customWord[1],
-    ].filter(Boolean);
-    const allWords2 = [
-      ...room.game3.words[2],
-      room.game3.customWord[2],
-    ].filter(Boolean);
+    const allWords1 = [...room.game3.words[1], room.game3.customWord[1]].filter(Boolean);
+    const allWords2 = [...room.game3.words[2], room.game3.customWord[2]].filter(Boolean);
 
     try {
       const text = await generateProfilerAnalysis(
-        room.names[1] || 'Jucător 1',
+        room.names[1]?.trim() || 'Cineva',
         allWords1,
-        room.names[2] || 'Jucător 2',
+        room.names[2]?.trim() || 'Cineva',
         allWords2,
       );
       room.game3.aiText = text;
@@ -258,11 +286,8 @@ io.on('connection', (socket) => {
     }
 
     room.game3.generating = false;
+    room.game3.continueReady = { 1: false, 2: false };
     advancePhase(room, PHASES.PHASE_5_RESULT);
-
-    schedulePhase(room, 8000, () => {
-      advancePhase(room, PHASES.PHASE_6);
-    });
   }
 
   socket.on('disconnect', () => {

@@ -2,18 +2,24 @@ export const PHASES = {
   WAITING: 'WAITING',
   PHASE_1: 'PHASE_1',
   PHASE_1_SYNC: 'PHASE_1_SYNC',
+  PHASE_1_UNLOCK: 'PHASE_1_UNLOCK',
   PHASE_2: 'PHASE_2',
-  PHASE_2_UNLOCK: 'PHASE_2_UNLOCK',
+  PHASE_2_TRANSITION: 'PHASE_2_TRANSITION',
+  PHASE_3_RULES: 'PHASE_3_RULES',
   PHASE_3: 'PHASE_3',
   PHASE_3_RESULT: 'PHASE_3_RESULT',
-  PHASE_4_INTRO: 'PHASE_4_INTRO',
+  PHASE_4_RULES: 'PHASE_4_RULES',
   PHASE_4: 'PHASE_4',
   PHASE_4_RESULT: 'PHASE_4_RESULT',
-  PHASE_5_INTRO: 'PHASE_5_INTRO',
   PHASE_5: 'PHASE_5',
   PHASE_5_RESULT: 'PHASE_5_RESULT',
   PHASE_6: 'PHASE_6',
-  PHASE_6_END: 'PHASE_6_END',
+};
+
+export const TIMING = {
+  SHORT: 6000,
+  MEDIUM: 8000,
+  LONG: 10000,
 };
 
 const OBJECTS = [
@@ -42,15 +48,14 @@ export function createRoom(roomId) {
     scores: { 1: 0, 2: 0 },
     game1: {
       pressStart: { 1: null, 2: null },
-      pressEnd: { 1: null, 2: null },
       submitted: { 1: false, 2: false },
       durations: { 1: null, 2: null },
       winner: null,
+      continueReady: { 1: false, 2: false },
     },
     game2: {
       object: null,
       startTime: null,
-      uploads: { 1: null, 2: null },
       uploadTimes: { 1: null, 2: null },
       visionResults: { 1: null, 2: null },
       submitted: { 1: false, 2: false },
@@ -63,6 +68,7 @@ export function createRoom(roomId) {
       submitted: { 1: false, 2: false },
       aiText: '',
       generating: false,
+      continueReady: { 1: false, 2: false },
     },
     phaseData: {},
   };
@@ -77,12 +83,6 @@ export function assignPlayer(room, socketId) {
     room.players[2] = socketId;
     return 2;
   }
-  return null;
-}
-
-export function getPlayerSlot(room, socketId) {
-  if (room.players[1] === socketId) return 1;
-  if (room.players[2] === socketId) return 2;
   return null;
 }
 
@@ -128,6 +128,11 @@ export function calcGame2Winner(room) {
   return null;
 }
 
+export function getDisplayName(room, slot) {
+  const n = room.names[slot]?.trim();
+  return n || '...';
+}
+
 export function serializeRoom(room) {
   return {
     id: room.id,
@@ -141,6 +146,7 @@ export function serializeRoom(room) {
       durations: { ...room.game1.durations },
       submitted: { ...room.game1.submitted },
       winner: room.game1.winner,
+      continueReady: { ...room.game1.continueReady },
     },
     game2: {
       object: room.game2.object,
@@ -156,6 +162,7 @@ export function serializeRoom(room) {
       submitted: { ...room.game3.submitted },
       aiText: room.game3.aiText,
       generating: room.game3.generating,
+      continueReady: { ...room.game3.continueReady },
     },
     badgeWords: room.phaseData.badgeWords || [],
     phaseData: room.phaseData,
