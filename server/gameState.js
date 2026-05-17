@@ -18,18 +18,21 @@ export const PHASES = {
   PHASE_6: 'PHASE_6',
 };
 
-const OBJECTS = [
-  'ceas', 'cană', 'carte', 'telefon', 'cheie', 'ochelari', 'stilou',
-  'flori', 'pantaloni', 'ceas de perete', 'laptop', 'pernă', 'sticlă de apă',
-  'portofel', 'ceas de mână', 'căști', 'mouse', 'tastatură', 'lampă', 'oglindă',
+const HOUSEHOLD_OBJECTS = [
+  'O lingură', 'O telecomandă', 'Un pantof', 'O cană', 'O cheie', 'Un prosop',
+  'O periuță de dinți', 'O pernă', 'O pătură', 'Un încărcător de telefon', 'O foarfecă',
+  'Un pahar', 'O carte', 'O tigaie', 'Un umeraș', 'O oglindă', 'Un săpun', 'O lumânare',
+  'O ramă foto', 'Un caiet', 'O pungă', 'O monedă', 'Un portofel', 'O umbrelă', 'Un șoset',
+  'Un ceas', 'O pereche de ochelari', 'Un mouse', 'O tastatură', 'O perie de păr',
+  'Un deodorant', 'Un burete de vase', 'O baterie', 'Un bec', 'Un pachet de șervețele',
+  'O sticlă de apă', 'O farfurie', 'Un pieptene', 'O rolă de hârtie', 'O brichetă',
 ];
 
-const BADGE_WORDS = [
-  'Haos', 'Somn', 'Cafea', 'Procrastinare', 'Memes', 'Playlist-uri triste',
-  'Sarcasm', 'Pizza', 'Scroll infinit', 'Deadline-uri', 'Filme la 2AM',
-  'Organizare zero', 'Vibes', 'Overthinking', 'Snack-uri', 'Playlist de vară',
-  'Filme romantice', 'Gaming', 'Plante moarte', 'Notificări', 'Chaos energy',
-  'Duminică', 'Playlist de iarnă', 'Căutări Google la 3AM',
+const PROFILE_WORDS = [
+  'Cafea + Liniște', 'Lego', 'Dark Romance', 'Pian și Voce', 'Fără Citrice!', 'Iarna',
+  'Alergat & Sală', 'Ciocolată 70%', 'Lalele Albe', 'Tort Prințul Negru', 'Psihologie',
+  'Audi', 'Lumânări Parfumate', 'Frică de Înălțime', 'Croșetat', 'Zero Șanse',
+  'Fără Machiaj', 'Călătorii', 'Business',
 ];
 
 export function createRoom(roomId) {
@@ -118,14 +121,13 @@ export function bothSubmitted(obj) {
 }
 
 export function pickRandomObject(exclude = []) {
-  const pool = OBJECTS.filter((o) => !exclude.includes(o));
-  const list = pool.length ? pool : OBJECTS;
+  const pool = HOUSEHOLD_OBJECTS.filter((o) => !exclude.includes(o));
+  const list = pool.length ? pool : HOUSEHOLD_OBJECTS;
   return list[Math.floor(Math.random() * list.length)];
 }
 
-export function getBadgeWords(count = 20) {
-  const shuffled = [...BADGE_WORDS].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+export function getBadgeWords() {
+  return [...PROFILE_WORDS];
 }
 
 export function getName(room, slot) {

@@ -118,12 +118,10 @@ export default function LiveCamera({ object, onCapture, disabled }) {
     }
   }
 
+  const objectLabel = object ? object.toUpperCase() : '...';
+
   return (
     <div className="flex flex-col items-center gap-4 w-full max-w-sm relative z-10">
-      <p className="text-lg text-zinc-300 text-center">
-        Obiect: <span className="text-white font-bold">{object || '...'}</span>
-      </p>
-
       <div className="relative w-full aspect-[3/4] bg-black rounded-xl overflow-hidden border-2 border-zinc-600">
         <video
           ref={videoRef}
@@ -144,6 +142,10 @@ export default function LiveCamera({ object, onCapture, disabled }) {
       >
         {busy ? 'Se trimite...' : 'FĂ POZA'}
       </button>
+
+      <p className="text-3xl text-white font-bold text-center mt-4 px-2 leading-tight">
+        Găsește: {objectLabel}
+      </p>
     </div>
   );
 }

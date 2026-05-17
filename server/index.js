@@ -170,7 +170,7 @@ function tryAdvanceFromNext(room, gameNum) {
   if (gameNum === 1) {
     advancePhase(room, PHASES.PHASE_4_RULES);
   } else if (gameNum === 2) {
-    room.phaseData.badgeWords = getBadgeWords(20);
+    room.phaseData.badgeWords = getBadgeWords();
     advancePhase(room, PHASES.PHASE_5);
   } else if (gameNum === 3) {
     advancePhase(room, PHASES.PHASE_6);
