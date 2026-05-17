@@ -166,7 +166,7 @@ export default function LiveCamera({ object, onCapture, disabled }) {
             Se pornește camera...
           </motion.div>
         )}
-      </motion.div>
+      </div>
 
       {error && (
         <p className="text-base text-amber-400 text-center px-2">{error}</p>

@@ -8,7 +8,8 @@ COPY client/package.json ./
 RUN npm install --no-audit --no-fund
 
 COPY client/ ./
-RUN npm run build
+COPY scripts/check-jsx-tags.mjs ../scripts/check-jsx-tags.mjs
+RUN node ../scripts/check-jsx-tags.mjs && npm run build
 
 # Imagine finală
 FROM node:20-bookworm-slim

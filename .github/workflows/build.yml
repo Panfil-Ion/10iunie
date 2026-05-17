@@ -15,6 +15,7 @@ jobs:
         working-directory: client
         run: |
           npm install --no-audit --no-fund
+          node ../scripts/check-jsx-tags.mjs
           npm run build
       - name: Verify dist
         run: ls -la client/dist/
