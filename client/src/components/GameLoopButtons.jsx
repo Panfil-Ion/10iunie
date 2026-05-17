@@ -29,7 +29,7 @@ export default function GameLoopButtons({ state, slot, emit, game }) {
         >
           [ Mai departe ]
         </button>
-      </motion.div>
+      </div>
       {pressedNext && !otherNext && (
         <p className="text-lg text-zinc-400 text-center">{waitingForPeer(state, slot)}</p>
       )}
