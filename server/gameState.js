@@ -31,7 +31,7 @@ const HOUSEHOLD_OBJECTS = [
 const PROFILE_WORDS = [
   'Cafea + Liniște', 'Lego', 'Dark Romance', 'Pian și Voce', 'Fără Citrice!', 'Iarna',
   'Alergat & Sală', 'Ciocolată 70%', 'Lalele Albe', 'Tort Prințul Negru', 'Psihologie',
-  'Audi', 'Lumânări Parfumate', 'Frică de Înălțime', 'Croșetat', 'Zero Șanse',
+  'Audi', 'Lumânări Parfumate', 'Frică de Înălțime', 'Croșetat',
   'Fără Machiaj', 'Călătorii', 'Business',
 ];
 

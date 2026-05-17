@@ -1,19 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import GameLoopButtons from './GameLoopButtons';
+import ThinkingBlink from './ThinkingBlink';
 import { INPUT_CLASS, BTN_SUBMIT } from '../styles';
 import { waitingForPeer } from '../utils/names';
+
+const THINKING_MS = 4000;
 
 export default function Phase5AIProfiler({ slot, state, emit }) {
   const [selected, setSelected] = useState([]);
   const [custom, setCustom] = useState('');
   const [displayText, setDisplayText] = useState('');
   const [typewriterDone, setTypewriterDone] = useState(false);
+  const [thinkingDone, setThinkingDone] = useState(false);
+  const thinkingStartedRef = useRef(false);
+
   const submitted = state?.game3?.submitted?.[slot];
+  const generating = state?.game3?.generating;
+  const bothSubmitted = state?.game3?.submitted?.[1] && state?.game3?.submitted?.[2];
   const badges = state?.phaseData?.badgeWords || [];
 
   useEffect(() => {
-    if (state?.phase !== 'PHASE_5_RESULT' || !state?.game3?.aiText) return;
+    if (state?.phase !== 'PHASE_5_RESULT') {
+      setThinkingDone(false);
+      setDisplayText('');
+      setTypewriterDone(false);
+      thinkingStartedRef.current = false;
+      return;
+    }
+
+    if (thinkingStartedRef.current) return;
+    thinkingStartedRef.current = true;
+    setThinkingDone(false);
+    setDisplayText('');
+    setTypewriterDone(false);
+
+    const timer = setTimeout(() => setThinkingDone(true), THINKING_MS);
+    return () => clearTimeout(timer);
+  }, [state?.phase, state?.game3?.aiText]);
+
+  useEffect(() => {
+    if (state?.phase !== 'PHASE_5_RESULT' || !thinkingDone || !state?.game3?.aiText) return;
 
     const full = state.game3.aiText;
     let i = 0;
@@ -21,7 +48,7 @@ export default function Phase5AIProfiler({ slot, state, emit }) {
     setTypewriterDone(false);
 
     const interval = setInterval(() => {
-      i++;
+      i += 1;
       setDisplayText(full.slice(0, i));
       if (i >= full.length) {
         clearInterval(interval);
@@ -30,9 +57,13 @@ export default function Phase5AIProfiler({ slot, state, emit }) {
     }, 22);
 
     return () => clearInterval(interval);
-  }, [state?.phase, state?.game3?.aiText]);
+  }, [state?.phase, state?.game3?.aiText, thinkingDone]);
 
   if (state?.phase === 'PHASE_5_RESULT') {
+    if (!thinkingDone) {
+      return <ThinkingBlink />;
+    }
+
     return (
       <motion.div className="h-full w-full flex flex-col items-center justify-center px-6 py-16 overflow-y-auto">
         <div className="max-w-2xl text-center flex-1 flex flex-col justify-center">
@@ -40,16 +71,17 @@ export default function Phase5AIProfiler({ slot, state, emit }) {
             {displayText}
             {!typewriterDone && <span className="animate-pulse">|</span>}
           </p>
-          {state.game3.generating && (
-            <p className="text-lg text-zinc-500 mt-8">AI scanează personalitățile...</p>
-          )}
         </div>
 
-        {typewriterDone && !state.game3.generating && (
+        {typewriterDone && (
           <GameLoopButtons state={state} slot={slot} emit={emit} game={3} />
         )}
       </motion.div>
     );
+  }
+
+  if (generating || (bothSubmitted && submitted)) {
+    return <ThinkingBlink />;
   }
 
   const toggleWord = (word) => {
