@@ -1,47 +1,32 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { waitingForPeer } from '../utils/names';
+import { getName, otherSlot } from '../utils/names';
 
 const VIDEO_SRC = '/0520.mp4';
-const SYNC_DRIFT_S = 0.2;
 
-function waitCanPlayThrough(video) {
-  return new Promise((resolve) => {
-    if (video.readyState >= 4) {
-      resolve();
-      return;
-    }
-    const onReady = () => {
-      video.removeEventListener('canplaythrough', onReady);
-      resolve();
-    };
-    video.addEventListener('canplaythrough', onReady);
-    video.load();
-  });
+function lockPortraitOrientation() {
+  const o = screen.orientation;
+  if (!o?.lock) return;
+  o.lock('portrait').catch(() => {});
 }
 
-export default function Phase5SystemVideo({
-  state,
-  slot,
-  emit,
-  videoPlayAt,
-  videoSyncPos,
-}) {
+function unlockOrientation() {
+  screen.orientation?.unlock?.();
+}
+
+export default function Phase5SystemVideo({ state, slot, emit }) {
   const videoRef = useRef(null);
-  const stageRef = useRef(null);
   const [needsUnlock, setNeedsUnlock] = useState(false);
   const [started, setStarted] = useState(false);
   const [buffering, setBuffering] = useState(true);
   const finishedRef = useRef(false);
-  const bufferedSentRef = useRef(false);
   const videoReady = state?.phaseData?.videoReady?.[slot];
-  const peerReady = state?.phaseData?.videoReady?.[slot === 1 ? 2 : 1];
-  const peerBuffered = state?.phaseData?.videoBuffered?.[slot === 1 ? 2 : 1];
-  const iBuffered = state?.phaseData?.videoBuffered?.[slot];
+  const peerReady = state?.phaseData?.videoReady?.[otherSlot(slot)];
+  const peerName = getName(state, otherSlot(slot));
 
   const tryPlay = useCallback(async () => {
     const video = videoRef.current;
-    if (!video) return false;
+    if (!video) return;
 
     setNeedsUnlock(false);
     try {
@@ -49,22 +34,20 @@ export default function Phase5SystemVideo({
       await video.play();
       setStarted(true);
       setBuffering(false);
-      return true;
     } catch {
       setNeedsUnlock(true);
       setStarted(false);
-      return false;
     }
   }, []);
 
   useEffect(() => {
     finishedRef.current = false;
-    bufferedSentRef.current = false;
     setNeedsUnlock(false);
     setStarted(false);
     setBuffering(true);
 
     document.documentElement.classList.add('video-phase-active');
+    lockPortraitOrientation();
     window.scrollTo(0, 0);
 
     const video = videoRef.current;
@@ -74,60 +57,14 @@ export default function Phase5SystemVideo({
       video.load();
     }
 
+    const t = setTimeout(() => tryPlay(), 200);
+
     return () => {
+      clearTimeout(t);
       document.documentElement.classList.remove('video-phase-active');
-      if (document.fullscreenElement) {
-        document.exitFullscreen?.().catch(() => {});
-      }
+      unlockOrientation();
     };
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || bufferedSentRef.current) return;
-
-    let cancelled = false;
-
-    (async () => {
-      await waitCanPlayThrough(video);
-      if (cancelled || bufferedSentRef.current) return;
-      bufferedSentRef.current = true;
-      emit('video-buffered');
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [emit]);
-
-  useEffect(() => {
-    if (!videoPlayAt) return;
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.pause();
-    video.currentTime = 0;
-    tryPlay();
-
-    const el = stageRef.current;
-    if (el?.requestFullscreen) {
-      el.requestFullscreen().catch(() => {});
-    }
-  }, [videoPlayAt, tryPlay]);
-
-  useEffect(() => {
-    if (videoSyncPos == null) return;
-    const video = videoRef.current;
-    if (!video || needsUnlock) return;
-
-    const drift = Math.abs(video.currentTime - videoSyncPos);
-    if (drift > SYNC_DRIFT_S) {
-      video.currentTime = videoSyncPos;
-    }
-    if (video.paused && !needsUnlock) {
-      tryPlay();
-    }
-  }, [videoSyncPos, needsUnlock, tryPlay]);
+  }, [tryPlay]);
 
   useEffect(() => {
     if (videoReady) finishedRef.current = true;
@@ -140,18 +77,18 @@ export default function Phase5SystemVideo({
   };
 
   const handleUnlock = async () => {
-    const video = videoRef.current;
-    if (video && videoSyncPos != null) {
-      video.currentTime = videoSyncPos;
-    }
     await tryPlay();
   };
 
   if (videoReady && !peerReady) {
     return (
-      <div className="portrait-video-stage video-phone-fit z-[200] flex items-center justify-center px-6">
-        <p className="text-lg text-zinc-500 text-center tracking-wide">
-          {waitingForPeer(state, slot)}
+      <div className="portrait-video-stage video-orient-locked z-[200] flex items-center justify-center px-8">
+        <p className="text-xl text-zinc-300 text-center leading-relaxed max-w-md">
+          Video-ul tău s-a terminat.
+          <br />
+          <span className="text-zinc-500 mt-4 block">
+            Se așteaptă după {peerName}...
+          </span>
         </p>
       </div>
     );
@@ -159,12 +96,11 @@ export default function Phase5SystemVideo({
 
   return (
     <motion.div
-      ref={stageRef}
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
-      className="portrait-video-stage video-phone-fit z-[200]"
+      className="portrait-video-stage video-orient-locked z-[200]"
     >
-      <div className="portrait-video-frame-wrap">
+      <div className="portrait-video-orient-lock">
         <video
           ref={videoRef}
           src={VIDEO_SRC}
@@ -183,13 +119,8 @@ export default function Phase5SystemVideo({
       </div>
 
       {buffering && !started && !needsUnlock && (
-        <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center bg-black/80 pointer-events-none gap-3 px-6">
-          <p className="text-sm text-zinc-400 tracking-widest uppercase text-center">
-            Se încarcă...
-          </p>
-          {iBuffered && !peerBuffered && (
-            <p className="text-xs text-zinc-500 text-center">{waitingForPeer(state, slot)}</p>
-          )}
+        <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/70 pointer-events-none">
+          <p className="text-sm text-zinc-400 tracking-widest uppercase">Se încarcă...</p>
         </div>
       )}
 

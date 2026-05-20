@@ -84,10 +84,7 @@ export default function Phase4PixelHunt({ slot, state, emit }) {
   );
 
   return (
-    <div className="game2-stage">
-      <p className="shrink-0 text-center text-lg text-zinc-400 py-2">
-        Runda {g2?.currentRound} / 3
-      </p>
+    <div className="game2-stage game2-stage--active">
       <div className="game2-play-area">
         {submitted || captured ? (
           <LoadingSpinner

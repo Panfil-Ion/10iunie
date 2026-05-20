@@ -22,8 +22,6 @@ export function useSocket() {
   const [state, setState] = useState(null);
   const [peerTyping, setPeerTyping] = useState({ name: '', date: '' });
   const [error, setError] = useState(null);
-  const [videoPlayAt, setVideoPlayAt] = useState(0);
-  const [videoSyncPos, setVideoSyncPos] = useState(null);
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -50,14 +48,6 @@ export function useSocket() {
 
     socket.on('error', ({ message }) => setError(message));
 
-    socket.on('video-play', () => {
-      setVideoPlayAt(Date.now());
-    });
-
-    socket.on('video-sync', ({ position }) => {
-      setVideoSyncPos(position);
-    });
-
     return () => socket.disconnect();
   }, []);
 
@@ -65,5 +55,5 @@ export function useSocket() {
     socketRef.current?.emit(event, data);
   }, []);
 
-  return { connected, slot, state, peerTyping, error, emit, videoPlayAt, videoSyncPos };
+  return { connected, slot, state, peerTyping, error, emit };
 }

@@ -51,42 +51,6 @@ const io = new Server(httpServer, {
 });
 
 const rooms = new Map();
-const videoSyncTimers = new Map();
-
-function stopVideoSync(roomId) {
-  const timer = videoSyncTimers.get(roomId);
-  if (timer) clearInterval(timer);
-  videoSyncTimers.delete(roomId);
-}
-
-function startVideoSync(room) {
-  stopVideoSync(room.id);
-  room.phaseData.videoEpoch = Date.now();
-  const timer = setInterval(() => {
-    if (!rooms.has(room.id) || room.phase !== PHASES.PHASE_5_VIDEO) {
-      stopVideoSync(room.id);
-      return;
-    }
-    const position = (Date.now() - room.phaseData.videoEpoch) / 1000;
-    io.to(room.id).emit('video-sync', { position });
-  }, 350);
-  videoSyncTimers.set(room.id, timer);
-}
-
-function tryStartSyncedVideo(room) {
-  if (room.phase !== PHASES.PHASE_5_VIDEO) return;
-  if (room.phaseData.videoSyncStarted) return;
-  if (!bothSubmitted(room.phaseData.videoBuffered)) return;
-
-  room.phaseData.videoSyncStarted = true;
-  broadcastState(room);
-
-  setTimeout(() => {
-    if (!rooms.has(room.id) || room.phase !== PHASES.PHASE_5_VIDEO) return;
-    startVideoSync(room);
-    io.to(room.id).emit('video-play');
-  }, 1500);
-}
 
 function getOrCreateRoom(roomId) {
   if (!rooms.has(roomId)) rooms.set(roomId, createRoom(roomId));
@@ -298,20 +262,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('video-buffered', () => {
-    if (!currentRoom || !playerSlot || currentRoom.phase !== PHASES.PHASE_5_VIDEO) return;
-    if (currentRoom.phaseData.videoBuffered[playerSlot]) return;
-    currentRoom.phaseData.videoBuffered[playerSlot] = true;
-    broadcastState(currentRoom);
-    tryStartSyncedVideo(currentRoom);
-  });
-
   socket.on('video-done', () => {
     if (!currentRoom || !playerSlot || currentRoom.phase !== PHASES.PHASE_5_VIDEO) return;
     currentRoom.phaseData.videoReady[playerSlot] = true;
     broadcastState(currentRoom);
     if (bothSubmitted(currentRoom.phaseData.videoReady)) {
-      stopVideoSync(currentRoom.id);
       advancePhase(currentRoom, PHASES.PHASE_6);
     }
   });

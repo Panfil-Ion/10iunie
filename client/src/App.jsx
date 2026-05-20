@@ -80,8 +80,7 @@ function CinematicWait({ state, slot }) {
 }
 
 export default function App() {
-  const { connected, slot, state, peerTyping, error, emit, videoPlayAt, videoSyncPos } =
-    useSocket();
+  const { connected, slot, state, peerTyping, error, emit } = useSocket();
   const phase = state?.phase;
   const waiting = !state || phase === 'WAITING' || !slot;
   const isVideoPhase = phase === 'PHASE_5_VIDEO';
@@ -127,15 +126,7 @@ export default function App() {
       </ScreenAck>
     );
   } else if (isVideoPhase) {
-    content = (
-      <Phase5SystemVideo
-        state={state}
-        slot={slot}
-        emit={emit}
-        videoPlayAt={videoPlayAt}
-        videoSyncPos={videoSyncPos}
-      />
-    );
+    content = <Phase5SystemVideo state={state} slot={slot} emit={emit} />;
   } else {
     content = (
       <>
