@@ -41,6 +41,7 @@ const ACK_SCREENS = {
   },
   PHASE_4_RULES: {
     text: 'Jocul 2: Vânătoarea de Pixeli — Best of 3. Sistemul va cere 3 obiecte random. Cine face poza validată cel mai repede câștigă runda. Camera live, fără galerie.',
+    subtext: 'Pozele sunt verificate strict de inteligența artificială.',
     long: true,
   },
   PHASE_5_VIDEO_PREP: {
@@ -79,7 +80,8 @@ function CinematicWait({ state, slot }) {
 }
 
 export default function App() {
-  const { connected, slot, state, peerTyping, error, emit } = useSocket();
+  const { connected, slot, state, peerTyping, error, emit, videoPlayAt, videoSyncPos } =
+    useSocket();
   const phase = state?.phase;
   const waiting = !state || phase === 'WAITING' || !slot;
   const isVideoPhase = phase === 'PHASE_5_VIDEO';
@@ -120,12 +122,20 @@ export default function App() {
       );
   } else if (ackScreen) {
     content = (
-      <ScreenAck state={state} slot={slot} emit={emit} long={ackScreen.long}>
+      <ScreenAck state={state} slot={slot} emit={emit} long={ackScreen.long} subtext={ackScreen.subtext}>
         {ackScreen.text}
       </ScreenAck>
     );
   } else if (isVideoPhase) {
-    content = <Phase5SystemVideo state={state} slot={slot} emit={emit} />;
+    content = (
+      <Phase5SystemVideo
+        state={state}
+        slot={slot}
+        emit={emit}
+        videoPlayAt={videoPlayAt}
+        videoSyncPos={videoSyncPos}
+      />
+    );
   } else {
     content = (
       <>

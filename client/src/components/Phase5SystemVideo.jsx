@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { waitingForPeer } from '../utils/names';
 
 const VIDEO_SRC = '/0520.mp4';
-const SYNC_TOLERANCE_S = 0.35;
+const SYNC_DRIFT_S = 0.2;
 
 function waitCanPlayThrough(video) {
   return new Promise((resolve) => {
@@ -20,26 +20,28 @@ function waitCanPlayThrough(video) {
   });
 }
 
-function waitUntil(timestamp) {
-  const ms = timestamp - Date.now();
-  if (ms <= 0) return Promise.resolve();
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-export default function Phase5SystemVideo({ state, slot, emit }) {
+export default function Phase5SystemVideo({
+  state,
+  slot,
+  emit,
+  videoPlayAt,
+  videoSyncPos,
+}) {
   const videoRef = useRef(null);
+  const stageRef = useRef(null);
   const [needsUnlock, setNeedsUnlock] = useState(false);
   const [started, setStarted] = useState(false);
   const [buffering, setBuffering] = useState(true);
   const finishedRef = useRef(false);
-  const syncStartedRef = useRef(false);
+  const bufferedSentRef = useRef(false);
   const videoReady = state?.phaseData?.videoReady?.[slot];
   const peerReady = state?.phaseData?.videoReady?.[slot === 1 ? 2 : 1];
-  const videoStartAt = state?.phaseData?.videoStartAt;
+  const peerBuffered = state?.phaseData?.videoBuffered?.[slot === 1 ? 2 : 1];
+  const iBuffered = state?.phaseData?.videoBuffered?.[slot];
 
   const tryPlay = useCallback(async () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) return false;
 
     setNeedsUnlock(false);
     try {
@@ -47,38 +49,23 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
       await video.play();
       setStarted(true);
       setBuffering(false);
+      return true;
     } catch {
       setNeedsUnlock(true);
       setStarted(false);
+      return false;
     }
   }, []);
 
-  const runSyncedPlayback = useCallback(async () => {
-    if (syncStartedRef.current || !videoStartAt) return;
-    const video = videoRef.current;
-    if (!video) return;
-
-    syncStartedRef.current = true;
-    setBuffering(true);
-
-    try {
-      video.pause();
-      video.currentTime = 0;
-      await waitCanPlayThrough(video);
-      await waitUntil(videoStartAt);
-      await tryPlay();
-    } catch {
-      syncStartedRef.current = false;
-      setBuffering(false);
-    }
-  }, [videoStartAt, tryPlay]);
-
   useEffect(() => {
     finishedRef.current = false;
-    syncStartedRef.current = false;
+    bufferedSentRef.current = false;
     setNeedsUnlock(false);
     setStarted(false);
     setBuffering(true);
+
+    document.documentElement.classList.add('video-phase-active');
+    window.scrollTo(0, 0);
 
     const video = videoRef.current;
     if (video) {
@@ -86,29 +73,61 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
       video.currentTime = 0;
       video.load();
     }
+
+    return () => {
+      document.documentElement.classList.remove('video-phase-active');
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    };
   }, []);
 
   useEffect(() => {
-    if (!videoStartAt) return;
-    runSyncedPlayback();
-  }, [videoStartAt, runSyncedPlayback]);
+    const video = videoRef.current;
+    if (!video || bufferedSentRef.current) return;
+
+    let cancelled = false;
+
+    (async () => {
+      await waitCanPlayThrough(video);
+      if (cancelled || bufferedSentRef.current) return;
+      bufferedSentRef.current = true;
+      emit('video-buffered');
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [emit]);
 
   useEffect(() => {
+    if (!videoPlayAt) return;
     const video = videoRef.current;
-    if (!video || !started || !videoStartAt) return;
+    if (!video) return;
 
-    const tick = () => {
-      const elapsed = (Date.now() - videoStartAt) / 1000;
-      if (elapsed < 0 || video.paused || needsUnlock) return;
-      const drift = video.currentTime - elapsed;
-      if (Math.abs(drift) > SYNC_TOLERANCE_S) {
-        video.currentTime = Math.max(0, elapsed);
-      }
-    };
+    video.pause();
+    video.currentTime = 0;
+    tryPlay();
 
-    const id = setInterval(tick, 2000);
-    return () => clearInterval(id);
-  }, [started, videoStartAt, needsUnlock]);
+    const el = stageRef.current;
+    if (el?.requestFullscreen) {
+      el.requestFullscreen().catch(() => {});
+    }
+  }, [videoPlayAt, tryPlay]);
+
+  useEffect(() => {
+    if (videoSyncPos == null) return;
+    const video = videoRef.current;
+    if (!video || needsUnlock) return;
+
+    const drift = Math.abs(video.currentTime - videoSyncPos);
+    if (drift > SYNC_DRIFT_S) {
+      video.currentTime = videoSyncPos;
+    }
+    if (video.paused && !needsUnlock) {
+      tryPlay();
+    }
+  }, [videoSyncPos, needsUnlock, tryPlay]);
 
   useEffect(() => {
     if (videoReady) finishedRef.current = true;
@@ -122,18 +141,15 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
 
   const handleUnlock = async () => {
     const video = videoRef.current;
-    if (!video || !videoStartAt) {
-      await tryPlay();
-      return;
+    if (video && videoSyncPos != null) {
+      video.currentTime = videoSyncPos;
     }
-    const elapsed = (Date.now() - videoStartAt) / 1000;
-    video.currentTime = Math.max(0, elapsed);
     await tryPlay();
   };
 
   if (videoReady && !peerReady) {
     return (
-      <div className="portrait-video-stage video-phone-full z-[200] flex items-center justify-center px-6">
+      <div className="portrait-video-stage video-phone-fit z-[200] flex items-center justify-center px-6">
         <p className="text-lg text-zinc-500 text-center tracking-wide">
           {waitingForPeer(state, slot)}
         </p>
@@ -143,9 +159,10 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
 
   return (
     <motion.div
+      ref={stageRef}
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
-      className="portrait-video-stage video-phone-full z-[200]"
+      className="portrait-video-stage video-phone-fit z-[200]"
     >
       <div className="portrait-video-frame-wrap">
         <video
@@ -165,9 +182,14 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
         ></video>
       </div>
 
-      {buffering && !needsUnlock && (
-        <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/60 pointer-events-none">
-          <p className="text-sm text-zinc-400 tracking-widest uppercase">Se încarcă...</p>
+      {buffering && !started && !needsUnlock && (
+        <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center bg-black/80 pointer-events-none gap-3 px-6">
+          <p className="text-sm text-zinc-400 tracking-widest uppercase text-center">
+            Se încarcă...
+          </p>
+          {iBuffered && !peerBuffered && (
+            <p className="text-xs text-zinc-500 text-center">{waitingForPeer(state, slot)}</p>
+          )}
         </div>
       )}
 

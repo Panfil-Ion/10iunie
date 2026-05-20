@@ -83,7 +83,7 @@ export default function Phase5AIProfiler({ slot, state, emit }) {
     }
 
     if (loaderStep === 'generating') {
-      return <ThinkingBlink label="generare poveste" />;
+      return <ThinkingBlink label="Generare poveste cu AI" preserveCase />;
     }
 
     return (
