@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { getName, otherSlot } from '../utils/names';
-import {
-  requestAppFullscreen,
-  exitAppFullscreen,
-  lockPortraitOrientation,
-  unlockOrientation,
-} from '../utils/videoFullscreen';
+import { lockPortraitOrientation, unlockOrientation } from '../utils/videoFullscreen';
+import { fitVideoToViewport } from '../utils/fitVideoToViewport';
 
 const VIDEO_SRC = '/0520.mp4';
 const STUCK_MS = 5000;
@@ -43,17 +39,23 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
   const [started, setStarted] = useState(false);
   const [status, setStatus] = useState('loading');
   const finishedRef = useRef(false);
+  const startedRef = useRef(false);
   const startAttemptedRef = useRef(false);
   const videoReady = state?.phaseData?.videoReady?.[slot];
   const peerReady = state?.phaseData?.videoReady?.[otherSlot(slot)];
   const peerName = getName(state, otherSlot(slot));
 
-  const startPlayback = useCallback(async (fromTap = false) => {
+  const applyFit = useCallback(() => {
+    fitVideoToViewport(stageRef.current, videoRef.current);
+  }, []);
+
+  const startPlayback = useCallback(async () => {
     const video = videoRef.current;
     if (!video || finishedRef.current) return;
 
     setNeedsTap(false);
     setStatus('loading');
+    applyFit();
 
     try {
       await waitUntilReady(video);
@@ -63,27 +65,26 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
       return;
     }
 
-    await lockPortraitOrientation();
-    if (fromTap) {
-      await requestAppFullscreen(stageRef.current || document.documentElement);
-    }
-
+    applyFit();
     video.currentTime = 0;
 
     try {
       video.muted = true;
       await video.play();
       video.muted = false;
+      startedRef.current = true;
       setStarted(true);
       setStatus('playing');
+      applyFit();
     } catch {
       setNeedsTap(true);
       setStatus('tap');
     }
-  }, []);
+  }, [applyFit]);
 
   useEffect(() => {
     finishedRef.current = false;
+    startedRef.current = false;
     startAttemptedRef.current = false;
     setNeedsTap(false);
     setStarted(false);
@@ -98,8 +99,17 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
       video.load();
     }
 
+    applyFit();
+
+    const onViewportChange = () => applyFit();
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', onViewportChange);
+    vv?.addEventListener('scroll', onViewportChange);
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('orientationchange', onViewportChange);
+
     const stuckTimer = setTimeout(() => {
-      if (!started && !finishedRef.current) {
+      if (!startedRef.current && !finishedRef.current) {
         setNeedsTap(true);
         setStatus('tap');
       }
@@ -108,17 +118,20 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
     const t = setTimeout(() => {
       if (startAttemptedRef.current) return;
       startAttemptedRef.current = true;
-      startPlayback(false);
+      startPlayback();
     }, 300);
 
     return () => {
       clearTimeout(t);
       clearTimeout(stuckTimer);
+      vv?.removeEventListener('resize', onViewportChange);
+      vv?.removeEventListener('scroll', onViewportChange);
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('orientationchange', onViewportChange);
       document.documentElement.classList.remove('video-phase-active');
       unlockOrientation();
-      exitAppFullscreen();
     };
-  }, [startPlayback]);
+  }, [startPlayback, applyFit]);
 
   useEffect(() => {
     if (videoReady) finishedRef.current = true;
@@ -132,12 +145,17 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
 
   const handleTapStart = () => {
     startAttemptedRef.current = true;
-    startPlayback(true);
+    startPlayback();
   };
+
+  const handleMeta = () => applyFit();
 
   if (videoReady && !peerReady) {
     return (
-      <div className="portrait-video-stage video-immersive z-[200] flex items-center justify-center px-8">
+      <div
+        ref={stageRef}
+        className="portrait-video-stage z-[200] flex items-center justify-center px-8"
+      >
         <p className="text-xl text-zinc-300 text-center leading-relaxed max-w-md">
           Video-ul tău s-a terminat.
           <br />
@@ -155,29 +173,31 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
       ref={stageRef}
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
-      className="portrait-video-stage video-immersive z-[200]"
+      className="portrait-video-stage z-[200]"
     >
-      <video
-        ref={videoRef}
-        src={VIDEO_SRC}
-        className="portrait-video-frame"
-        playsInline
-        preload="auto"
-        disablePictureInPicture
-        onEnded={handleEnded}
-        onPlay={() => {
-          setStarted(true);
-          setStatus('playing');
-          setNeedsTap(false);
-        }}
-        onError={() => {
-          setNeedsTap(true);
-          setStatus('tap');
-        }}
-        onStalled={() => {
-          if (!started) setStatus('loading');
-        }}
-      ></video>
+      <div className="portrait-video-fit-shell">
+        <video
+          ref={videoRef}
+          src={VIDEO_SRC}
+          className="portrait-video-frame"
+          playsInline
+          preload="auto"
+          disablePictureInPicture
+          onEnded={handleEnded}
+          onLoadedMetadata={handleMeta}
+          onPlay={() => {
+            startedRef.current = true;
+            setStarted(true);
+            setStatus('playing');
+            setNeedsTap(false);
+            applyFit();
+          }}
+          onError={() => {
+            setNeedsTap(true);
+            setStatus('tap');
+          }}
+        ></video>
+      </div>
 
       {showLoader && (
         <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black pointer-events-none">

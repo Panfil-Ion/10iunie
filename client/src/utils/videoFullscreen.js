@@ -1,31 +1,4 @@
-/** Fullscreen + orientare portrait pentru faza video. */
-
-export function requestAppFullscreen(el = document.documentElement) {
-  const fn =
-    el.requestFullscreen ||
-    el.webkitRequestFullscreen ||
-    el.msRequestFullscreen;
-  if (!fn) return Promise.resolve();
-  try {
-    return Promise.resolve(fn.call(el));
-  } catch {
-    return Promise.resolve();
-  }
-}
-
-export function exitAppFullscreen() {
-  const fn =
-    document.exitFullscreen ||
-    document.webkitExitFullscreen ||
-    document.msExitFullscreen;
-  if (document.fullscreenElement && fn) {
-    try {
-      fn.call(document);
-    } catch {
-      /* ignore */
-    }
-  }
-}
+/** Orientare portrait la video — fără fullscreen (fullscreen rupe limitele pe mobil). */
 
 export function lockPortraitOrientation() {
   const o = screen.orientation;
@@ -37,9 +10,6 @@ export function unlockOrientation() {
   screen.orientation?.unlock?.();
 }
 
-/** Pregătire imersivă — apelat la tap pe „Am înțeles” (gest utilizator). */
 export function prepareVideoImmersion() {
-  lockPortraitOrientation();
-  return requestAppFullscreen();
+  return lockPortraitOrientation();
 }
-
