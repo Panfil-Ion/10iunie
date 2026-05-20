@@ -15,6 +15,8 @@ export const PHASES = {
   PHASE_4_GAME_RESULT: 'PHASE_4_GAME_RESULT',
   PHASE_5: 'PHASE_5',
   PHASE_5_RESULT: 'PHASE_5_RESULT',
+  PHASE_5_VIDEO_PREP: 'PHASE_5_VIDEO_PREP',
+  PHASE_5_VIDEO: 'PHASE_5_VIDEO',
   PHASE_6: 'PHASE_6',
 };
 
@@ -53,6 +55,7 @@ export function createRoom(roomId) {
       cinematicReady: { 1: false, 2: false },
       revengeAlert: null,
       badgeWords: [],
+      videoReady: { 1: false, 2: false },
     },
   };
 }
@@ -98,6 +101,7 @@ export function createGame3State() {
 export function resetAck(room) {
   room.phaseData.ackReady = { 1: false, 2: false };
   room.phaseData.cinematicReady = { 1: false, 2: false };
+  room.phaseData.videoReady = { 1: false, 2: false };
 }
 
 export function assignPlayer(room, socketId) {
@@ -221,6 +225,7 @@ export function serializeRoom(room) {
       cinematicReady: { ...(room.phaseData.cinematicReady || { 1: false, 2: false }) },
       revengeAlert: room.phaseData.revengeAlert,
       badgeWords: room.phaseData.badgeWords || [],
+      videoReady: { ...(room.phaseData.videoReady || { 1: false, 2: false }) },
     },
   };
 }

@@ -8,6 +8,7 @@ import Phase3Sync from './components/Phase3Sync';
 import Phase4PixelHunt from './components/Phase4PixelHunt';
 import Phase5AIProfiler from './components/Phase5AIProfiler';
 import Phase6Outro from './components/Phase6Outro';
+import Phase5SystemVideo from './components/Phase5SystemVideo';
 import ScreenAck from './components/ScreenAck';
 import TypewriterCinematic from './components/TypewriterCinematic';
 import CalibrationLoading from './components/CalibrationLoading';
@@ -40,6 +41,10 @@ const ACK_SCREENS = {
   PHASE_4_RULES: {
     text: 'Jocul 2: Vânătoarea de Pixeli — Best of 3. Sistemul va cere 3 obiecte random. Cine face poza validată cel mai repede câștigă runda. Camera live, fără galerie.',
     long: true,
+  },
+  PHASE_5_VIDEO_PREP: {
+    text: 'În continuare urmează un video. Pentru o experiență mai bună, conectează-ți căștile. Când ești gata, apasă mai jos.',
+    long: false,
   },
 };
 
@@ -76,6 +81,7 @@ export default function App() {
   const { connected, slot, state, peerTyping, error, emit } = useSocket();
   const phase = state?.phase;
   const waiting = !state || phase === 'WAITING' || !slot;
+  const isVideoPhase = phase === 'PHASE_5_VIDEO';
   const cinematic = CINEMATIC_SCREENS[phase];
   const ackScreen = ACK_SCREENS[phase];
 
@@ -117,6 +123,8 @@ export default function App() {
         {ackScreen.text}
       </ScreenAck>
     );
+  } else if (isVideoPhase) {
+    content = <Phase5SystemVideo state={state} slot={slot} emit={emit} />;
   } else {
     content = (
       <>
@@ -144,16 +152,16 @@ export default function App() {
 
   return (
     <motion.div className="h-full w-full relative bg-zinc-950">
-      <RevengeToast state={state} />
+      {!isVideoPhase && <RevengeToast state={state} />}
       <Scoreboard state={state} />
 
       <AnimatePresence mode="wait">
         <motion.div
           key={phase}
-          initial={{ opacity: 0 }}
+          initial={{ opacity: isVideoPhase ? 1 : 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
+          exit={{ opacity: isVideoPhase ? 1 : 0 }}
+          transition={{ duration: isVideoPhase ? 0 : 0.4 }}
           className="h-full"
         >
           {content}

@@ -112,6 +112,9 @@ function advanceFromAck(room) {
       initGame2(room);
       advancePhase(room, PHASES.PHASE_4);
       break;
+    case PHASES.PHASE_5_VIDEO_PREP:
+      advancePhase(room, PHASES.PHASE_5_VIDEO);
+      break;
     default:
       break;
   }
@@ -173,7 +176,7 @@ function tryAdvanceFromNext(room, gameNum) {
     room.phaseData.badgeWords = getBadgeWords();
     advancePhase(room, PHASES.PHASE_5);
   } else if (gameNum === 3) {
-    advancePhase(room, PHASES.PHASE_6);
+    advancePhase(room, PHASES.PHASE_5_VIDEO_PREP);
   }
 }
 
@@ -255,6 +258,15 @@ io.on('connection', (socket) => {
     broadcastState(currentRoom);
     if (bothSubmitted(currentRoom.phaseData.ackReady)) {
       advanceFromAck(currentRoom);
+    }
+  });
+
+  socket.on('video-done', () => {
+    if (!currentRoom || !playerSlot || currentRoom.phase !== PHASES.PHASE_5_VIDEO) return;
+    currentRoom.phaseData.videoReady[playerSlot] = true;
+    broadcastState(currentRoom);
+    if (bothSubmitted(currentRoom.phaseData.videoReady)) {
+      advancePhase(currentRoom, PHASES.PHASE_6);
     }
   });
 
