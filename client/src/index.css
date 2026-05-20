@@ -23,7 +23,7 @@ textarea {
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* Video portrait — rămâne fix la rotirea telefonului pe orizontal */
+/* Video — fullscreen telefon; în landscape cadrul portrait rămâne fix */
 .portrait-video-stage {
   position: fixed;
   inset: 0;
@@ -31,22 +31,90 @@ textarea {
   overflow: hidden;
 }
 
-.portrait-video-frame-wrap {
+.portrait-video-stage.video-phone-full .portrait-video-frame-wrap {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  aspect-ratio: 9 / 16;
-  width: min(100dvw, calc(100dvh * 9 / 16));
-  height: min(100dvh, calc(100dvw * 16 / 9));
+  width: 100dvw;
+  height: 100dvh;
   max-width: 100dvw;
   max-height: 100dvh;
 }
 
-.portrait-video-frame {
+.portrait-video-stage.video-phone-full .portrait-video-frame {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center center;
+}
+
+@media (orientation: landscape) {
+  .portrait-video-stage.video-phone-full .portrait-video-frame-wrap {
+    aspect-ratio: 9 / 16;
+    width: min(100dvw, calc(100dvh * 9 / 16));
+    height: min(100dvh, calc(100dvw * 16 / 9));
+  }
+
+  .portrait-video-stage.video-phone-full .portrait-video-frame {
+    object-fit: contain;
+  }
+}
+
+/* Joc 2 — cameră / buton / cuvânt fixe pe mobil */
+.game2-stage {
+  height: 100dvh;
+  max-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+}
+
+.game2-play-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.5rem 0.75rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.game2-camera-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 24rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0.75rem;
+  justify-content: flex-start;
+}
+
+.game2-camera-view {
+  flex: 0 1 auto;
+  width: 100%;
+  height: auto;
+  max-height: min(48dvh, 360px);
+  aspect-ratio: 3 / 4;
+  min-height: 0;
+}
+
+.game2-shutter-btn {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.game2-object-label {
+  flex: 0 0 auto;
+  width: 100%;
+  margin-top: 0;
 }

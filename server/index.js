@@ -114,6 +114,8 @@ function advanceFromAck(room) {
       break;
     case PHASES.PHASE_5_VIDEO_PREP:
       advancePhase(room, PHASES.PHASE_5_VIDEO);
+      room.phaseData.videoStartAt = Date.now() + 3500;
+      broadcastState(room);
       break;
     default:
       break;
@@ -411,7 +413,16 @@ io.on('connection', (socket) => {
 
 if (isProd) {
   const clientDist = path.join(__dirname, '..', 'client', 'dist');
-  app.use(express.static(clientDist));
+  app.use(
+    express.static(clientDist, {
+      setHeaders(res, filePath) {
+        if (filePath.endsWith('.mp4')) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          res.setHeader('Accept-Ranges', 'bytes');
+        }
+      },
+    })
+  );
   app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });

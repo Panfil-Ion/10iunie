@@ -84,11 +84,11 @@ export default function Phase4PixelHunt({ slot, state, emit }) {
   );
 
   return (
-    <SplitScreen slot={slot}>
-      <motion.div className="flex flex-col items-center gap-4 px-2 w-full">
-        <p className="text-lg text-zinc-400">
-          Runda {g2?.currentRound} / 3
-        </p>
+    <div className="game2-stage">
+      <p className="shrink-0 text-center text-lg text-zinc-400 py-2">
+        Runda {g2?.currentRound} / 3
+      </p>
+      <div className="game2-play-area">
         {submitted || captured ? (
           <LoadingSpinner
             text={processing ? 'AI validează imaginile...' : waitingForPeer(state, slot)}
@@ -101,7 +101,7 @@ export default function Phase4PixelHunt({ slot, state, emit }) {
             disabled={submitted}
           />
         )}
-      </motion.div>
-    </SplitScreen>
+      </div>
+    </div>
   );
 }

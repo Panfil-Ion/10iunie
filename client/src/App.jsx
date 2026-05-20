@@ -9,6 +9,7 @@ import Phase4PixelHunt from './components/Phase4PixelHunt';
 import Phase5AIProfiler from './components/Phase5AIProfiler';
 import Phase6Outro from './components/Phase6Outro';
 import Phase5SystemVideo from './components/Phase5SystemVideo';
+import VideoPreloader from './components/VideoPreloader';
 import ScreenAck from './components/ScreenAck';
 import TypewriterCinematic from './components/TypewriterCinematic';
 import CalibrationLoading from './components/CalibrationLoading';
@@ -150,8 +151,11 @@ export default function App() {
     );
   }
 
+  const preloadVideo = phase === 'PHASE_5_VIDEO_PREP' || phase === 'PHASE_5_VIDEO';
+
   return (
     <motion.div className="h-full w-full relative bg-zinc-950">
+      <VideoPreloader active={preloadVideo} />
       {!isVideoPhase && <RevengeToast state={state} />}
       <Scoreboard state={state} />
 

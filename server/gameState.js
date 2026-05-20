@@ -56,6 +56,7 @@ export function createRoom(roomId) {
       revengeAlert: null,
       badgeWords: [],
       videoReady: { 1: false, 2: false },
+      videoStartAt: null,
     },
   };
 }
@@ -102,6 +103,7 @@ export function resetAck(room) {
   room.phaseData.ackReady = { 1: false, 2: false };
   room.phaseData.cinematicReady = { 1: false, 2: false };
   room.phaseData.videoReady = { 1: false, 2: false };
+  room.phaseData.videoStartAt = null;
 }
 
 export function assignPlayer(room, socketId) {
@@ -226,6 +228,7 @@ export function serializeRoom(room) {
       revengeAlert: room.phaseData.revengeAlert,
       badgeWords: room.phaseData.badgeWords || [],
       videoReady: { ...(room.phaseData.videoReady || { 1: false, 2: false }) },
+      videoStartAt: room.phaseData.videoStartAt ?? null,
     },
   };
 }

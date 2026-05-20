@@ -121,29 +121,29 @@ export default function LiveCamera({ object, onCapture, disabled }) {
   const objectLabel = object ? object.toUpperCase() : '...';
 
   return (
-    <div className="flex flex-col items-center gap-4 w-full max-w-sm relative z-10">
-      <div className="relative w-full aspect-[3/4] bg-black rounded-xl overflow-hidden border-2 border-zinc-600">
+    <div className="game2-camera-root relative z-10">
+      <div className="game2-camera-view relative bg-black rounded-xl overflow-hidden border-2 border-zinc-600">
         <video
           ref={videoRef}
           muted
           autoPlay
           playsInline
-          className="w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover"
         />
       </div>
 
-      {error && <p className="text-base text-amber-400 text-center px-2">{error}</p>}
+      {error && <p className="text-base text-amber-400 text-center px-2 shrink-0">{error}</p>}
 
       <button
         type="button"
         onClick={handleShutter}
         disabled={disabled || busy}
-        className={`${BTN_SUBMIT} relative z-20 w-full bg-white text-zinc-950 border-white hover:bg-zinc-200 touch-manipulation min-h-[56px]`}
+        className={`${BTN_SUBMIT} game2-shutter-btn relative z-20 bg-white text-zinc-950 border-white hover:bg-zinc-200 touch-manipulation min-h-[56px]`}
       >
         {busy ? 'Se trimite...' : 'FĂ POZA'}
       </button>
 
-      <p className="text-3xl text-white font-bold text-center mt-4 px-2 leading-tight">
+      <p className="game2-object-label text-3xl text-white font-bold text-center px-2 leading-tight">
         Găsește: {objectLabel}
       </p>
     </div>
