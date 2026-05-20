@@ -418,17 +418,24 @@ if (isProd) {
         if (filePath.endsWith('.mp4')) {
           res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
           res.setHeader('Accept-Ranges', 'bytes');
+        } else if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
       },
     })
   );
   app.get('*', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, videoUi: 'fit-v5' });
+});
+
+app.get('/api/build', (_req, res) => {
+  res.json({ videoUi: 'fit-v5' });
 });
 
 httpServer.listen(PORT, '0.0.0.0', () => {
