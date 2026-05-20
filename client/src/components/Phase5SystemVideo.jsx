@@ -1,21 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { getName, otherSlot } from '../utils/names';
+import {
+  requestAppFullscreen,
+  exitAppFullscreen,
+  lockPortraitOrientation,
+  unlockOrientation,
+  tryNativeVideoFullscreen,
+} from '../utils/videoFullscreen';
 
 const VIDEO_SRC = '/0520.mp4';
 
-function lockPortraitOrientation() {
-  const o = screen.orientation;
-  if (!o?.lock) return;
-  o.lock('portrait').catch(() => {});
-}
-
-function unlockOrientation() {
-  screen.orientation?.unlock?.();
-}
-
 export default function Phase5SystemVideo({ state, slot, emit }) {
   const videoRef = useRef(null);
+  const stageRef = useRef(null);
   const [needsUnlock, setNeedsUnlock] = useState(false);
   const [started, setStarted] = useState(false);
   const [buffering, setBuffering] = useState(true);
@@ -29,9 +27,13 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
     if (!video) return;
 
     setNeedsUnlock(false);
+    await lockPortraitOrientation();
+    await requestAppFullscreen(stageRef.current || document.documentElement);
+
     try {
       video.muted = false;
       await video.play();
+      tryNativeVideoFullscreen(video);
       setStarted(true);
       setBuffering(false);
     } catch {
@@ -48,6 +50,7 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
 
     document.documentElement.classList.add('video-phase-active');
     lockPortraitOrientation();
+    requestAppFullscreen(document.documentElement);
     window.scrollTo(0, 0);
 
     const video = videoRef.current;
@@ -57,12 +60,13 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
       video.load();
     }
 
-    const t = setTimeout(() => tryPlay(), 200);
+    const t = setTimeout(() => tryPlay(), 150);
 
     return () => {
       clearTimeout(t);
       document.documentElement.classList.remove('video-phase-active');
       unlockOrientation();
+      exitAppFullscreen();
     };
   }, [tryPlay]);
 
@@ -82,13 +86,11 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
 
   if (videoReady && !peerReady) {
     return (
-      <div className="portrait-video-stage video-orient-locked z-[200] flex items-center justify-center px-8">
+      <div className="portrait-video-stage video-immersive z-[200] flex items-center justify-center px-8">
         <p className="text-xl text-zinc-300 text-center leading-relaxed max-w-md">
           Video-ul tău s-a terminat.
           <br />
-          <span className="text-zinc-500 mt-4 block">
-            Se așteaptă după {peerName}...
-          </span>
+          <span className="text-zinc-500 mt-4 block">Se așteaptă după {peerName}...</span>
         </p>
       </div>
     );
@@ -96,30 +98,30 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
 
   return (
     <motion.div
+      ref={stageRef}
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
-      className="portrait-video-stage video-orient-locked z-[200]"
+      className="portrait-video-stage video-immersive z-[200]"
     >
-      <div className="portrait-video-orient-lock">
-        <video
-          ref={videoRef}
-          src={VIDEO_SRC}
-          className="portrait-video-frame"
-          playsInline
-          preload="auto"
-          disablePictureInPicture
-          onEnded={handleEnded}
-          onPlay={() => {
-            setStarted(true);
-            setBuffering(false);
-          }}
-          onWaiting={() => setBuffering(true)}
-          onPlaying={() => setBuffering(false)}
-        ></video>
-      </div>
+      <video
+        ref={videoRef}
+        src={VIDEO_SRC}
+        className="portrait-video-frame"
+        playsInline
+        preload="auto"
+        disablePictureInPicture
+        onEnded={handleEnded}
+        onPlay={() => {
+          setStarted(true);
+          setBuffering(false);
+          tryNativeVideoFullscreen(videoRef.current);
+        }}
+        onWaiting={() => setBuffering(true)}
+        onPlaying={() => setBuffering(false)}
+      ></video>
 
       {buffering && !started && !needsUnlock && (
-        <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/70 pointer-events-none">
+        <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black pointer-events-none">
           <p className="text-sm text-zinc-400 tracking-widest uppercase">Se încarcă...</p>
         </div>
       )}

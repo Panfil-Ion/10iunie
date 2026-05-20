@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { BTN_ACK } from '../styles';
 import { waitingForPeer, otherSlot } from '../utils/names';
 
-export default function ScreenAck({ state, slot, emit, children, long = false, subtext }) {
+export default function ScreenAck({ state, slot, emit, children, long = false, subtext, onBeforeAck }) {
   const acked = state?.phaseData?.ackReady?.[slot];
   const otherAcked = state?.phaseData?.ackReady?.[otherSlot(slot)];
 
@@ -28,7 +28,10 @@ export default function ScreenAck({ state, slot, emit, children, long = false, s
 
       <button
         type="button"
-        onClick={() => emit('screen-ack')}
+        onClick={() => {
+          onBeforeAck?.();
+          emit('screen-ack');
+        }}
         disabled={acked}
         className={BTN_ACK}
       >

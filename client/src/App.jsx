@@ -16,6 +16,7 @@ import CalibrationLoading from './components/CalibrationLoading';
 import RevengeToast from './components/RevengeToast';
 import LoadingSpinner from './components/LoadingSpinner';
 import { waitingForPeer, otherSlot } from './utils/names';
+import { prepareVideoImmersion } from './utils/videoFullscreen';
 
 const CINEMATIC_SCREENS = {
   PHASE_1_SYNC: {
@@ -45,7 +46,9 @@ const ACK_SCREENS = {
     long: true,
   },
   PHASE_5_VIDEO_PREP: {
-    text: 'În continuare urmează un video. Pentru o experiență mai bună, conectează-ți căștile. Când ești gata, apasă mai jos.',
+    text: 'În continuare urmează un video. Pentru o experiență mai bună, conectează-ți căștile.',
+    subtext:
+      'Ține telefonul pe vertical și blochează orientarea ecranului (portrait) — din centrul de control sau setări — ca video-ul să rămână fix.',
     long: false,
   },
 };
@@ -121,7 +124,14 @@ export default function App() {
       );
   } else if (ackScreen) {
     content = (
-      <ScreenAck state={state} slot={slot} emit={emit} long={ackScreen.long} subtext={ackScreen.subtext}>
+      <ScreenAck
+        state={state}
+        slot={slot}
+        emit={emit}
+        long={ackScreen.long}
+        subtext={ackScreen.subtext}
+        onBeforeAck={phase === 'PHASE_5_VIDEO_PREP' ? prepareVideoImmersion : undefined}
+      >
         {ackScreen.text}
       </ScreenAck>
     );
