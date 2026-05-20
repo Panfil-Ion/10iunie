@@ -6,69 +6,119 @@ import {
   exitAppFullscreen,
   lockPortraitOrientation,
   unlockOrientation,
-  tryNativeVideoFullscreen,
 } from '../utils/videoFullscreen';
 
 const VIDEO_SRC = '/0520.mp4';
+const STUCK_MS = 5000;
+
+function waitUntilReady(video, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    if (video.readyState >= 3) {
+      resolve();
+      return;
+    }
+
+    const onReady = () => cleanup(resolve);
+    const onErr = () => cleanup(() => reject(new Error('load')));
+    const timer = setTimeout(() => cleanup(() => reject(new Error('timeout'))), timeoutMs);
+
+    const cleanup = (fn) => {
+      clearTimeout(timer);
+      video.removeEventListener('canplay', onReady);
+      video.removeEventListener('loadeddata', onReady);
+      video.removeEventListener('error', onErr);
+      fn();
+    };
+
+    video.addEventListener('canplay', onReady);
+    video.addEventListener('loadeddata', onReady);
+    video.addEventListener('error', onErr);
+  });
+}
 
 export default function Phase5SystemVideo({ state, slot, emit }) {
   const videoRef = useRef(null);
   const stageRef = useRef(null);
-  const [needsUnlock, setNeedsUnlock] = useState(false);
+  const [needsTap, setNeedsTap] = useState(false);
   const [started, setStarted] = useState(false);
-  const [buffering, setBuffering] = useState(true);
+  const [status, setStatus] = useState('loading');
   const finishedRef = useRef(false);
+  const startAttemptedRef = useRef(false);
   const videoReady = state?.phaseData?.videoReady?.[slot];
   const peerReady = state?.phaseData?.videoReady?.[otherSlot(slot)];
   const peerName = getName(state, otherSlot(slot));
 
-  const tryPlay = useCallback(async () => {
+  const startPlayback = useCallback(async (fromTap = false) => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || finishedRef.current) return;
 
-    setNeedsUnlock(false);
-    await lockPortraitOrientation();
-    await requestAppFullscreen(stageRef.current || document.documentElement);
+    setNeedsTap(false);
+    setStatus('loading');
 
     try {
-      video.muted = false;
-      await video.play();
-      tryNativeVideoFullscreen(video);
-      setStarted(true);
-      setBuffering(false);
+      await waitUntilReady(video);
     } catch {
-      setNeedsUnlock(true);
-      setStarted(false);
+      setNeedsTap(true);
+      setStatus('tap');
+      return;
+    }
+
+    await lockPortraitOrientation();
+    if (fromTap) {
+      await requestAppFullscreen(stageRef.current || document.documentElement);
+    }
+
+    video.currentTime = 0;
+
+    try {
+      video.muted = true;
+      await video.play();
+      video.muted = false;
+      setStarted(true);
+      setStatus('playing');
+    } catch {
+      setNeedsTap(true);
+      setStatus('tap');
     }
   }, []);
 
   useEffect(() => {
     finishedRef.current = false;
-    setNeedsUnlock(false);
+    startAttemptedRef.current = false;
+    setNeedsTap(false);
     setStarted(false);
-    setBuffering(true);
+    setStatus('loading');
 
     document.documentElement.classList.add('video-phase-active');
     lockPortraitOrientation();
-    requestAppFullscreen(document.documentElement);
     window.scrollTo(0, 0);
 
     const video = videoRef.current;
-    if (video) {
-      video.pause();
-      video.currentTime = 0;
+    if (video && video.readyState < 2) {
       video.load();
     }
 
-    const t = setTimeout(() => tryPlay(), 150);
+    const stuckTimer = setTimeout(() => {
+      if (!started && !finishedRef.current) {
+        setNeedsTap(true);
+        setStatus('tap');
+      }
+    }, STUCK_MS);
+
+    const t = setTimeout(() => {
+      if (startAttemptedRef.current) return;
+      startAttemptedRef.current = true;
+      startPlayback(false);
+    }, 300);
 
     return () => {
       clearTimeout(t);
+      clearTimeout(stuckTimer);
       document.documentElement.classList.remove('video-phase-active');
       unlockOrientation();
       exitAppFullscreen();
     };
-  }, [tryPlay]);
+  }, [startPlayback]);
 
   useEffect(() => {
     if (videoReady) finishedRef.current = true;
@@ -80,8 +130,9 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
     emit('video-done');
   };
 
-  const handleUnlock = async () => {
-    await tryPlay();
+  const handleTapStart = () => {
+    startAttemptedRef.current = true;
+    startPlayback(true);
   };
 
   if (videoReady && !peerReady) {
@@ -95,6 +146,9 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
       </div>
     );
   }
+
+  const showLoader = status === 'loading' && !started && !needsTap;
+  const showTap = needsTap && !started;
 
   return (
     <motion.div
@@ -113,25 +167,33 @@ export default function Phase5SystemVideo({ state, slot, emit }) {
         onEnded={handleEnded}
         onPlay={() => {
           setStarted(true);
-          setBuffering(false);
-          tryNativeVideoFullscreen(videoRef.current);
+          setStatus('playing');
+          setNeedsTap(false);
         }}
-        onWaiting={() => setBuffering(true)}
-        onPlaying={() => setBuffering(false)}
+        onError={() => {
+          setNeedsTap(true);
+          setStatus('tap');
+        }}
+        onStalled={() => {
+          if (!started) setStatus('loading');
+        }}
       ></video>
 
-      {buffering && !started && !needsUnlock && (
+      {showLoader && (
         <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black pointer-events-none">
           <p className="text-sm text-zinc-400 tracking-widest uppercase">Se încarcă...</p>
         </div>
       )}
 
-      {needsUnlock && !started && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
+      {showTap && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black gap-6 px-6">
+          <p className="text-zinc-400 text-center text-sm max-w-xs">
+            Apasă pentru a porni video-ul (sunet activ)
+          </p>
           <button
             type="button"
-            onClick={handleUnlock}
-            className="px-8 py-4 font-mono text-sm md:text-base tracking-[0.25em] uppercase text-zinc-300 border border-zinc-600 rounded hover:border-white hover:text-white transition-colors duration-500"
+            onClick={handleTapStart}
+            className="px-8 py-4 font-mono text-sm md:text-base tracking-[0.2em] uppercase text-zinc-300 border border-zinc-600 rounded hover:border-white hover:text-white transition-colors duration-500"
           >
             [ INITIALIZE SYSTEM OVERRIDE ]
           </button>

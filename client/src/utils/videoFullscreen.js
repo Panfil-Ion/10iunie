@@ -43,15 +43,3 @@ export function prepareVideoImmersion() {
   return requestAppFullscreen();
 }
 
-/** iOS Safari: ascunde bara browserului pe video. */
-export function tryNativeVideoFullscreen(video) {
-  if (video?.webkitEnterFullscreen) {
-    try {
-      video.webkitEnterFullscreen();
-      return true;
-    } catch {
-      /* fall through */
-    }
-  }
-  return false;
-}
