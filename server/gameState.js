@@ -31,10 +31,8 @@ const HOUSEHOLD_OBJECTS = [
 ];
 
 const PROFILE_WORDS = [
-  'Cafea + Liniște', 'Lego', 'Dark Romance', 'Pian și Voce', 'Fără Citrice!', 'Iarna',
-  'Alergat & Sală', 'Ciocolată 70%', 'Lalele Albe', 'Tort Prințul Negru', 'Psihologie',
-  'Audi', 'Lumânări Parfumate', 'Frică de Înălțime', 'Croșetat',
-  'Fără Machiaj', 'Călătorii', 'Business',
+  'Liniște', 'Energie', 'Creativitate', 'Aventură', 'Mister', 'Natură', 'Cafea',
+  'Libertate', 'Muzică', 'Umor', 'Răbdare', 'Haos', 'Visare', 'Căldură', 'Disciplină',
 ];
 
 export function createRoom(roomId) {
