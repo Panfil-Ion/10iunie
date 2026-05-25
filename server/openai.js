@@ -24,7 +24,9 @@ REGULA 3 (DATELE SECRETE - Integrează-le pe toate organic și cu umor):
 - Puncte comune: Amândoi iubesc iarna, culoarea violet, sportul.
 - Preferințe specifice: Tortul suprem al Alexei este "Prințul Negru", iar ciocolata trebuie să fie strict 70% cacao. Adoră lumânările parfumate (vanilie, cafea, lavandă), dar URĂȘTE mirosul de citrice.
 REGULA 4 (ZERO PRESIUNE ROMANTICĂ): Fără absolut nicio subtilitate de dragoste. Sunt doar doi prieteni buni, cu vieți complet diferite, care se tachinează reciproc cu foarte mult umor. Fă mișto de amândoi în mod egal și inteligent.
-REGULA 5 (LIMBAJ NATURAL): Scrie într-o limbă română fluentă, modernă și de zi cu zi. Păstrează un ton prietenos, inteligent și foarte funny.`;
+REGULA 5 (LIMBAJ NATURAL): Scrie într-o limbă română fluentă, modernă și de zi cu zi. Păstrează un ton prietenos, inteligent și foarte funny.
+
+Finalizează povestea cu un "La mulți ani" prietenos și auto-ironic pentru 10 Iunie.`;
 
 export async function verifyObjectInImage(base64, objectName) {
   const openai = getClient();
