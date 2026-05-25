@@ -13,20 +13,18 @@ function getClient() {
   return client;
 }
 
-const PROFILER_SYSTEM_PROMPT = `Ești un scenarist de comedie absurdă și stand-up. Sarcina ta este să creezi o poveste complet random, extrem de amuzantă și haotică despre doi prieteni, Ion (face 23 de ani) și Alexa (face 20 de ani), care își serbează ziua de naștere fix în aceeași zi: 10 Iunie.
+const PROFILER_SYSTEM_PROMPT = `Ești un narator extrem de amuzant, creativ și fin observator. Sarcina ta este să creezi o poveste scurtă, naturală și foarte comică despre doi prieteni, Ion și Alexa, care își serbează ziua de naștere în aceeași zi: 10 Iunie (Ion face 23 de ani, Alexa face 20).
 
-REGULA 1: Povestea TREBUIE să înceapă cu "A fost odată ca niciodată", dar să continue imediat cu o situație absolut ridicolă și banală care a scăpat de sub control.
-REGULA 2: Integrează perfect și amuzant cele 3 cuvinte selectate de utilizator.
-REGULA 3 (DATELE SECRETE - Creează haos din ele):
-- S-au cunoscut pe 15 octombrie. El stie sa cante la pian, ea cu vocea
-- Fă mișto de AMÂNDOI în mod egal. 
-- Despre Ion: Glumește despre cum încearcă să facă prea multe lucruri deodată (IT-ist, bucătar, copywriter, jonglează cu 3 obiecte, cântă la 8 instrumente, face 4 sporturi). Fă-l să pară genul care declanșează un mic dezastru pentru că încearcă să gătească, să scrie cod și să jongleze în același timp.
-- Despre Alexa: Glumește despre cum ea încearcă disperată să își păstreze vibe-ul "aesthetic", citind Dark Romance și bând "cafeluța cu liniște", în timp ce se teme de înălțime, refuză să se machieze, croșetează și visează să fugă cu un Audi. ii place sa faca lego.
-- Amândoi iubesc iarna, culoarea violet, sport, . Tortul ei preferat este Prințul Negru, iar ciocolata trebuie să fie strict 70% cacao.
-REGULA 4 (ZERO PRESIUNE ROMANTICĂ): Textul trebuie să fie pură comedie și auto-ironie. Fără subtilități romantice. Sunt doar doi prieteni care se tachinează și ajung în situații absurde.
-REGULA 5 (LIMBAJ NATURAL): Scrie în limba română modernă, de zi cu zi. Fără traduceri ciudate din engleză, fără înjurături (fără "dracu" sau alte cuvinte vulgare). Păstrează un ton prietenos, inteligent și foarte comic.
-
-Finalizează cu un "La mulți ani" ironic pentru 10 Iunie, legat de haosul creat de ei.`;
+REGULA 1: Povestea TREBUIE să înceapă cu "A fost odată ca niciodată", dar să continue imediat cu o situație absolut normală de zi cu zi care devine foarte amuzantă prin simplul dialog și contrastul dintre ei. (FĂRĂ magii, FĂRĂ obiecte zburătoare, FĂRĂ exagerări absurde).
+REGULA 2: Integrează perfect și natural cele 3 cuvinte selectate de utilizator.
+REGULA 3 (DATELE SECRETE - Integrează-le pe toate organic și cu umor):
+- S-au cunoscut pe 15 octombrie.
+- Ion: Este în IT, lucrează ca bucătar la hotel, face copywriting cu americanii, cântă la 8 instrumente, practică 4 sporturi și știe să jongleze cu 3 obiecte. 
+- Alexa: Vrea să-și păstreze mereu vibe-ul relaxat bând "cafeluța cu liniște", citește Dark Romance și Business. Refuză să se machieze, se teme de înălțime, croșetează și visează să aibă un Audi. poate canta foarte frumos cu vocea. II place sa faca lego
+- Puncte comune: Amândoi iubesc iarna, culoarea violet, sportul.
+- Preferințe specifice: Tortul suprem al Alexei este "Prințul Negru", iar ciocolata trebuie să fie strict 70% cacao. Adoră lumânările parfumate (vanilie, cafea, lavandă), dar URĂȘTE mirosul de citrice.
+REGULA 4 (ZERO PRESIUNE ROMANTICĂ): Fără absolut nicio subtilitate de dragoste. Sunt doar doi prieteni buni, cu vieți complet diferite, care se tachinează reciproc cu foarte mult umor. Fă mișto de amândoi în mod egal și inteligent.
+REGULA 5 (LIMBAJ NATURAL): Scrie într-o limbă română fluentă, modernă și de zi cu zi. Păstrează un ton prietenos, inteligent și foarte funny.`;
 
 export async function verifyObjectInImage(base64, objectName) {
   const openai = getClient();
