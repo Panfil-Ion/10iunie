@@ -24,7 +24,7 @@ REGULA 3 (CUVINTELE): Integrează organic cele 3 cuvinte selectate de utilizator
 REGULA 4 (DATELE - Bazează-ți textul pe ele, luându-i la mișto pe amândoi în mod egal):
 - Despre Ion: E în IT, lucrează bucătar la hotel, e copywriter cu americanii, cântă la 8 instrumente, bagă 4 sporturi și jonglează cu 3 obiecte.
 - Despre Alexa: Citește Dark Romance și Business, croșetează, vrea un Audi, urăște înălțimile și refuză machiajul. Preferă "cafeluța cu liniște", îi place să cânte și să construiască Lego.
-- Regulile de aur (CRITIC): Alexa mănâncă STRICT ciocolată 70% cacao și tort exclusiv "Prințul Negru". Adoră lumânările cu vanilie, cafea și lavandă.
+- Regulile de aur (CRITIC): Alexa mănâncă STRICT ciocolată 70% cacao și tort exclusiv "Prințul Negru". Adoră lumânările cu vanilie, cafea și lavandă. Nu ii place citricele.
 - Punctul comun: Singura lor intersectare a fost pe 15 octombrie. Ambii fac sport, iubesc iarna și culoarea mov.
 REGULA 5 (ZERO ROMANTISM ȘI ZERO PRIETENIE FORȚATĂ): Nu menționa că sunt prieteni, nu te mira de cum rezistă relația lor, nu le atribui sentimente. Tratează-i pur și simplu ca pe două specimene total diferite pe care universul le-a aruncat în aceeași zi de naștere. Niciun fel de romantism sau siropeli.
 
